@@ -1,7 +1,8 @@
 import GUI from 'lil-gui';
-import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET } from './config.js';
+import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET, SERVICE } from './config.js';
 import { FACADES } from './building.js';
 import { NAV } from './navigation.js';
+import { sanitizeSignText, setAnnexSignText } from './serviceArea.js';
 
 /** Display toggles that map directly onto building layers. */
 const LAYER_TOGGLES = {
@@ -34,6 +35,7 @@ export function createUI(app) {
     // additions in front of the main facade
     porch: true, canopies: true, annex: true, entranceDoors: true, service: true,
     basement: true, arrows: true,
+    annexText: SERVICE.sign.text, // digits on the technical annex sign
     stairFront: true, // facade strips in front of the stair shafts
     markup: true,     // plan lines on the 4th floor
     floor4Facade: true, // exterior walls with windows of the 4th floor
@@ -107,6 +109,7 @@ export function createUI(app) {
     });
     app.setNarrowDoors(view.narrowDoors);
     app.setSection(view.section ? view.sectionDepth : null);
+    setAnnexSignText(app.building(), view.annexText);
     applyRooms();
     viewer.setAO(view.ambientOcclusion && !view.section); // AO pass ignores clipping
   }
@@ -146,6 +149,15 @@ export function createUI(app) {
   fFront.add(view, 'porch').name('entrance porch & steps').onChange(applyView);
   fFront.add(view, 'canopies').name('canopies').onChange(applyView);
   fFront.add(view, 'annex').name('technical annex').onChange(applyView);
+  const signCtrl = fFront.add(view, 'annexText').name(`annex sign (${SERVICE.sign.maxDigits} digits)`).onChange((v) => {
+    const clean = sanitizeSignText(v);
+    if (clean !== v) { view.annexText = clean; signCtrl.updateDisplay(); }
+    setAnnexSignText(app.building(), clean);
+  });
+  const signInput = signCtrl.domElement.querySelector('input');
+  signInput.maxLength = SERVICE.sign.maxDigits;
+  signInput.inputMode = 'numeric';
+  signInput.placeholder = '0000';
   fFront.add(view, 'basement').name('basement stair (under canopy)').onChange(applyView);
   fFront.add(view, 'arrows').name('route arrows').onChange(applyView);
   fFront.add(view, 'entranceDoors').name('entrance & utility doors').onChange(applyView);

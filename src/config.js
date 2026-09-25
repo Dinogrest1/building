@@ -140,6 +140,8 @@ export const SERVICE = {
   grilleGap: 0.5,         // between shutter top and grille bottom
   canopyDepth: 0.65,
   enclosure: { width: 3.4, height: 1.9, depth: 1.3 },
+  // sign block on top of the technical annex with editable digits
+  sign: { width: 1.7, height: 0.6, depth: 0.14, text: '0000', maxDigits: 4 },
 };
 
 /** Basement entrance next to the main porch: stair pit along the facade under a lean-to canopy. */

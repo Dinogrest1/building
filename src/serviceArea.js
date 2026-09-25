@@ -1,3 +1,4 @@
+import * as THREE from 'three';
 import { SERVICE, FIN, COPING } from './config.js';
 
 const L = 'service';
@@ -60,4 +61,57 @@ export function createEnclosure(placer, u, mats) {
   // metal service door + small louvre in the front
   placer.boxMinMax('annex', mats.door, u0 + 0.5, 0.35, E.depth, u0 + 1.4, 1.7, E.depth + 0.03);
   placer.boxMinMax('annex', mats.grille, u1 - 1.0, 1.0, E.depth, u1 - 0.4, 1.5, E.depth + 0.02);
+
+  // sign block standing on the annex roof at its front edge; the digits are editable
+  const S = SERVICE.sign;
+  const top = E.height + COPING.height;
+  const zf = E.depth + COPING.overhang - 0.02;
+  placer.boxMinMax('annex', mats.metal, u - S.width / 2, top, zf - S.depth, u + S.width / 2, top + S.height, zf);
+  const face = new THREE.Mesh(new THREE.PlaneGeometry(S.width - 0.08, S.height - 0.08), signMaterial(S.text));
+  face.position.set(u, top + S.height / 2, zf + 0.003);
+  face.name = 'annex-sign';
+  placer.mesh('annex', face);
+}
+
+/** Canvas texture with the sign digits. */
+function signTexture(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 176;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#f4f3ef';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#2b2d30';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, canvas.width - 10, canvas.height - 10);
+  ctx.fillStyle = '#1d1f22';
+  ctx.font = '700 128px ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text || ' ', canvas.width / 2, canvas.height / 2 + 6);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+function signMaterial(text) {
+  const mat = new THREE.MeshStandardMaterial({ map: signTexture(text), roughness: 0.6 });
+  mat.userData.disposable = true;
+  return mat;
+}
+
+/** Keeps digits only, at most SERVICE.sign.maxDigits of them. */
+export function sanitizeSignText(value) {
+  return String(value ?? '').replace(/\D/g, '').slice(0, SERVICE.sign.maxDigits);
+}
+
+/** Updates the digits on every annex sign under `root`. */
+export function setAnnexSignText(root, text) {
+  root.traverse((o) => {
+    if (o.name !== 'annex-sign') return;
+    o.material.map?.dispose();
+    o.material.map = signTexture(text);
+    o.material.needsUpdate = true;
+  });
 }
