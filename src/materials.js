@@ -47,7 +47,7 @@ function createRoofTexture() {
     img.data[i] = img.data[i + 1] = img.data[i + 2] = v;
   }
   ctx.putImageData(img, 0, 0);
-  ctx.strokeStyle = 'rgba(0,0,0,0.16)';
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
   ctx.lineWidth = 2;
   const sheets = 4;
   for (let i = 0; i <= sheets; i++) {
@@ -83,12 +83,12 @@ export function createMaterials(colors) {
 
     glass: new THREE.MeshPhysicalMaterial({
       color: colors.glass,
-      roughness: 0.14,
-      metalness: 0.15,
-      reflectivity: 0.35,
-      clearcoat: 0.3,
-      clearcoatRoughness: 0.2,
-      envMapIntensity: 0.9,
+      roughness: 0.06,
+      metalness: 0.25,
+      reflectivity: 0.5,
+      clearcoat: 0.5,
+      clearcoatRoughness: 0.1,
+      envMapIntensity: 1.8,
     }),
     frame: new THREE.MeshStandardMaterial({ color: colors.frame, roughness: 0.5, metalness: 0.4 }),
     sill: new THREE.MeshStandardMaterial({ color: '#a7a8a8', roughness: 0.45, metalness: 0.5 }),

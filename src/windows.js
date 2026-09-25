@@ -5,7 +5,7 @@ const _c = new THREE.Color();
 
 /** Slight per-window tint variation – real glazing never reflects identically. */
 function glassTint(rng) {
-  _c.setHSL(0, 0, 0.9 + rng() * 0.14);
+  _c.setHSL(0.55 + (rng() - 0.5) * 0.03, 0.15 * rng(), 0.82 + rng() * 0.22);
   return _c.clone();
 }
 
@@ -49,7 +49,8 @@ export function createWindowModule(placer, o, mats, rng, { transom = true } = {}
 
 /** Horizontal group of panes (the typical facade module) – same construction, several panes. */
 export function createWindowGroup(placer, o, mats, rng) {
-  createWindowModule(placer, o, mats, rng, { transom: true });
+  // reference shows tall undivided vertical panes → no transom on the main windows
+  createWindowModule(placer, o, mats, rng, { transom: false });
 }
 
 /** Small square stair-core window. */

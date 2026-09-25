@@ -24,7 +24,7 @@ export function levels(p) {
 function layoutGroups(zoneStart, zoneWidth, panesList, paneWidth) {
   const n = panesList.length;
   const totalPanes = panesList.reduce((a, b) => a + b, 0);
-  const minPier = 0.45;
+  const minPier = 0.3;
   let pw = paneWidth;
   if (zoneWidth - totalPanes * pw < minPier * (n + 1)) {
     pw = Math.max(0.35, (zoneWidth - minPier * (n + 1)) / totalPanes);
@@ -133,6 +133,8 @@ function assignHVAC(facade, p, rng, densityScale = 1) {
   for (const o of facade.openings) {
     if (o.kind !== 'window') continue;
     if (rng() > p.hvacDensity * densityScale) continue;
+    // no units directly above the service bays (band + grilles occupy that wall)
+    if (o.floor === 1 && facade.bands.some((bd) => o.u0 + o.w > bd.u0 && o.u0 < bd.u1)) continue;
     const roomForCluster = Math.floor(o.w / (HVAC.width * 0.9 + 0.06));
     let count = 1;
     const r = rng();

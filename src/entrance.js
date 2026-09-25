@@ -88,14 +88,6 @@ export function createEntrance(placer, o, p, mats) {
   }
   rail([stairU0, gl + rh, zr], [stairU1 - 0.1, riser + rh, zr]);
   rail([stairU0, gl + rh * 0.5, zr], [stairU1 - 0.1, riser + rh * 0.5, zr], 0.015);
-  // wall-side handrail on brackets
-  rail([stairU0, gl + rh, 0.09], [stairU1, riser + rh, 0.09], 0.02);
-  for (const t of [0.15, 0.85]) {
-    const u = stairU0 + t * (stairU1 - stairU0);
-    const y = gl + rh + t * (riser - gl);
-    rail([u, y, 0.0], [u, y, 0.09], 0.012);
-  }
-
   // landing rails: front edge and left side
   const zl = E.landingDepth - 0.06;
   const lu = landU0 + 0.06;

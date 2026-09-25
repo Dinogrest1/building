@@ -5,7 +5,7 @@ import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-import { CAMERA_PRESETS, DEFAULT_PRESET } from './config.js';
+import { CAMERA_PRESETS, CAMERA_FOV, DEFAULT_PRESET } from './config.js';
 
 const BACKGROUND = 0xf3f3f1;
 
@@ -21,7 +21,7 @@ export class Viewer {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.outputColorSpace = THREE.SRGBColorSpace;
     renderer.toneMapping = THREE.NeutralToneMapping;
-    renderer.toneMappingExposure = 1.0;
+    renderer.toneMappingExposure = 0.9;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(renderer.domElement);
@@ -29,7 +29,7 @@ export class Viewer {
 
     const scene = new THREE.Scene();
     scene.background = new THREE.Color(BACKGROUND);
-    scene.fog = new THREE.Fog(BACKGROUND, 140, 320);
+    scene.fog = new THREE.Fog(BACKGROUND, 400, 900);
     // soft studio environment for subtle glass/metal reflections
     const pmrem = new THREE.PMREMGenerator(renderer);
     scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -39,14 +39,14 @@ export class Viewer {
     this.createLights();
     this.createGround();
 
-    const camera = new THREE.PerspectiveCamera(35, window.innerWidth / window.innerHeight, 0.1, 600);
+    const camera = new THREE.PerspectiveCamera(CAMERA_FOV, window.innerWidth / window.innerHeight, 1, 2000);
     this.camera = camera;
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
     controls.minDistance = 6;
-    controls.maxDistance = 150;
+    controls.maxDistance = 520;
     controls.maxPolarAngle = Math.PI * 0.495; // stay above the ground
     controls.screenSpacePanning = true;
     this.controls = controls;
@@ -61,11 +61,11 @@ export class Viewer {
   }
 
   createLights() {
-    this.hemi = new THREE.HemisphereLight(0xf4f7fb, 0xcfc9bf, 1.35);
+    this.hemi = new THREE.HemisphereLight(0xeef2f7, 0xc9c6c0, 1.05);
     this.scene.add(this.hemi);
 
-    const sun = new THREE.DirectionalLight(0xfffaf2, 2.4);
-    this.sunOffset = new THREE.Vector3(30, 55, 38);
+    const sun = new THREE.DirectionalLight(0xfffaf2, 1.3);
+    this.sunOffset = new THREE.Vector3(-22, 60, 40);
     sun.position.copy(this.sunOffset);
     sun.castShadow = true;
     sun.shadow.mapSize.set(4096, 4096);

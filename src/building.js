@@ -52,6 +52,7 @@ export class Building extends THREE.Group {
       this.materials.interior,
     );
     core.position.set(0, (roofLevel - 0.3) / 2, 0);
+    core.castShadow = true;
     core.receiveShadow = true;
     core.name = 'core';
     this.parts.structure.add(core);
