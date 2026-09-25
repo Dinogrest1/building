@@ -1,5 +1,8 @@
 import * as THREE from 'three';
 
+export const STAIR_COLOR = '#c9c5bd';
+export const DOOR_FRAME_COLOR = '#6d7175';
+
 /** Subtle procedural plaster noise so large walls don't look like flat CG. */
 function createPlasterTexture() {
   const size = 256;
@@ -106,6 +109,20 @@ export function createMaterials(colors) {
     door: new THREE.MeshStandardMaterial({ color: '#34373a', roughness: 0.4, metalness: 0.6 }),
     shutter: new THREE.MeshStandardMaterial({ color: '#8b8e91', roughness: 0.5, metalness: 0.55 }),
     grille: new THREE.MeshStandardMaterial({ color: '#2a2c2e', roughness: 0.7, metalness: 0.3 }),
+
+    // ---- interior ----
+    slab: new THREE.MeshStandardMaterial({ color: '#b9b7b2', roughness: 0.95 }),
+    interiorWall: new THREE.MeshStandardMaterial({ color: '#e8e6e1', roughness: 0.9 }),
+    cubicle: new THREE.MeshStandardMaterial({ color: '#aebcc2', roughness: 0.6 }),
+    doorFrame: new THREE.MeshStandardMaterial({ color: '#6d7175', roughness: 0.5, metalness: 0.4 }),
+    doorFrameNarrow: new THREE.MeshStandardMaterial({ color: '#6d7175', roughness: 0.5, metalness: 0.4 }),
+    doorLeaf: new THREE.MeshStandardMaterial({ color: '#d6d0c2', roughness: 0.7 }),
+    stair: new THREE.MeshStandardMaterial({ color: STAIR_COLOR, roughness: 0.85 }),
+    stairNosing: new THREE.MeshStandardMaterial({ color: '#8b8e91', roughness: 0.5, metalness: 0.5 }),
+    steel: new THREE.MeshStandardMaterial({ color: '#d3d8dc', roughness: 0.22, metalness: 0.9 }),
+    railGlass: new THREE.MeshPhysicalMaterial({
+      color: '#a8d6d4', roughness: 0.05, metalness: 0, transparent: true, opacity: 0.35, depthWrite: false,
+    }),
   };
 
   // Keep a reference for texture repeat updates on the roof.
@@ -128,4 +145,21 @@ export function applyColors(materials, colors) {
 
 export function setWireframe(materials, enabled) {
   for (const mat of Object.values(materials)) mat.wireframe = enabled;
+}
+
+/** Stair appearance: highlight colour and transparent flights. */
+export function setStairStyle(materials, { highlight, color, transparent, opacity }) {
+  const m = materials.stair;
+  m.color.set(highlight ? color : STAIR_COLOR);
+  const wasTransparent = m.transparent;
+  m.transparent = transparent;
+  m.opacity = transparent ? opacity : 1;
+  m.depthWrite = !transparent;
+  if (wasTransparent !== transparent) m.needsUpdate = true;
+}
+
+/** Colours door frames narrower than the inclusivity norm. */
+export function setNarrowDoorHighlight(materials, enabled) {
+  materials.doorFrameNarrow.color.set(enabled ? '#d9342b' : DOOR_FRAME_COLOR);
+  materials.doorFrameNarrow.emissive.set(enabled ? '#5a0d08' : '#000000');
 }

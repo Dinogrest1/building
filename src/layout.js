@@ -172,19 +172,19 @@ export function computeLayout(p) {
   const upper = floors.slice(1);
 
   // ---------- zone widths along the long facades ----------
+  // Stair-core strips sit where the plan puts the stairs; the rest fills around them.
   const Z = FRONT_ZONES;
-  const fixed = 2 * Z.cornerPier + Z.leftWing.width + Z.rightWing.width + 2 * Z.stairStrip;
-  const centralWidth = Math.max(Z.minCentral, W - fixed);
-  const scale = W - fixed < Z.minCentral ? (W - 2 * Z.cornerPier - Z.minCentral) / (fixed - 2 * Z.cornerPier) : 1;
-  const leftW = Z.leftWing.width * scale;
-  const rightW = Z.rightWing.width * scale;
-  const stripW = Z.stairStrip * scale;
+  const stripW = Z.stairStrip;
+  const coreX = Z.stairCores.map((f) => -W / 2 + f * W);
   const x = { start: -W / 2 + Z.cornerPier };
   x.leftWing = x.start;
-  x.leftStrip = x.leftWing + leftW;
+  x.leftStrip = coreX[0] - stripW / 2;
   x.central = x.leftStrip + stripW;
-  x.rightStrip = x.central + centralWidth;
+  x.rightStrip = coreX[1] - stripW / 2;
   x.rightWing = x.rightStrip + stripW;
+  const leftW = x.leftStrip - x.leftWing;
+  const centralWidth = x.rightStrip - x.central;
+  const rightW = W / 2 - Z.cornerPier - x.rightWing;
 
   const centralPanes = Array.from({ length: p.centralModules }, (_, i) => Z.centralPattern[i % Z.centralPattern.length]);
   const pw = p.windowPaneWidth;
@@ -205,7 +205,7 @@ export function computeLayout(p) {
 
   addStairStrip(front, p, lv, x.rightStrip + stripW / 2, true);
   addWindowZone(front, p, lv, 'rightWing', layoutGroups(x.rightWing, rightW, Z.rightWing.panes, pw), upper);
-  addServiceRow(front, x.rightWing, rightW, 3, SERVICE.shutterWidth * Math.min(1, scale));
+  addServiceRow(front, x.rightWing, rightW, 3, SERVICE.shutterWidth);
 
   // main entrance in front of the first central bay
   const eu = entranceGroup.u0 + entranceGroup.w / 2;
@@ -238,7 +238,7 @@ export function computeLayout(p) {
     new THREE.Matrix4().makeTranslation(0, 0, -D / 2).multiply(new THREE.Matrix4().makeRotationY(Math.PI)),
     'facade', [-W / 2 - 0.05, W / 2 + 0.05]);
   const mirror = (xw, width) => -(xw + width); // world x-range start → local u start
-  addWindowZone(back, p, lv, 'rightWing', layoutGroups(mirror(x.rightWing, rightW), rightW, [1, 2, 2], pw), floors);
+  addWindowZone(back, p, lv, 'rightWing', layoutGroups(mirror(x.rightWing, rightW), rightW, [...Z.rightWing.panes].reverse(), pw), floors);
   addStairStrip(back, p, lv, -(x.rightStrip + stripW / 2), true);
   const backPanes = centralPanes.map((_, i) => Z.centralPattern[(i + 5) % Z.centralPattern.length]);
   addWindowZone(back, p, lv, 'central', layoutGroups(mirror(x.central, centralWidth), centralWidth, backPanes, pw), floors);
@@ -251,5 +251,5 @@ export function computeLayout(p) {
   assignHVAC(back, p, rng, 0.6);
   assignHVAC(left, p, rng, 0.6);
 
-  return { facades, levels: lv, zones: x, centralWidth };
+  return { facades, levels: lv, zones: x, centralWidth, stairCoresX: coreX };
 }

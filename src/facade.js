@@ -18,7 +18,7 @@ const BELOW_GRADE = 0.3;
  */
 export function buildFacade(rootPlacer, def, ctx) {
   const { params: p, levels: lv, materials: mats, rng } = ctx;
-  const placer = rootPlacer.sub(def.frame);
+  const placer = rootPlacer.sub(def.frame, def.name);
   const t = p.wallThickness;
 
   // ---- wall skin with openings (ExtrudeGeometry keeps real reveals/depth) ----

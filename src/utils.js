@@ -71,24 +71,29 @@ const _up = new THREE.Vector3(0, 1, 0);
 /**
  * Places geometry in a local frame (e.g. a facade frame where u = X along
  * the wall, v = Y up, w = Z outward from the wall face) into category sinks.
+ * `scope` (e.g. 'front', 'floor4') lets each facade / floor be toggled on its own.
  */
 export class Placer {
-  constructor(sinks, layers, frame = new THREE.Matrix4()) {
-    this.sinks = sinks;   // { category: InstanceSink }
-    this.layers = layers; // { category: THREE.Group } for unique meshes
+  constructor(store, frame = new THREE.Matrix4(), scope = 'common') {
+    this.store = store;   // { sink(category, scope): InstanceSink, group(category, scope): THREE.Group }
     this.frame = frame;
+    this.scope = scope;
   }
 
-  /** New placer whose frame is this frame × local. */
-  sub(local) {
-    return new Placer(this.sinks, this.layers, this.frame.clone().multiply(local));
+  /** New placer whose frame is this frame × local (optionally in another scope). */
+  sub(local, scope = this.scope) {
+    return new Placer(this.store, this.frame.clone().multiply(local), scope);
+  }
+
+  withScope(scope) {
+    return new Placer(this.store, this.frame, scope);
   }
 
   instance(category, geometry, material, position, rotation, scale, opts) {
     _q.setFromEuler(_e.set(rotation[0], rotation[1], rotation[2]));
     _m.compose(_p.set(...position), _q, _s.set(...scale));
     _m.premultiply(this.frame);
-    this.sinks[category].add(geometry, material, _m, opts);
+    this.store.sink(category, this.scope).add(geometry, material, _m, opts);
   }
 
   /** Axis-aligned box by centre + size (optionally rotated). */
@@ -116,16 +121,17 @@ export class Placer {
     const pb = new THREE.Vector3(...b);
     const dir = pb.clone().sub(pa);
     const len = dir.length();
+    if (len < 1e-6) return;
     _q.setFromUnitVectors(_up, dir.normalize());
     _m.compose(pa.add(pb).multiplyScalar(0.5), _q, _s.set(radius, len, radius));
     _m.premultiply(this.frame);
-    this.sinks[category].add(opts.geometry || UNIT.rod, material, _m, opts);
+    this.store.sink(category, this.scope).add(opts.geometry || UNIT.rod, material, _m, opts);
   }
 
   /** Adds a unique mesh transformed into this frame. */
   mesh(category, mesh) {
     mesh.applyMatrix4(this.frame);
-    this.layers[category].add(mesh);
+    this.store.group(category, this.scope).add(mesh);
     return mesh;
   }
 }
@@ -150,5 +156,9 @@ export function disposeObject(root) {
   root.traverse((o) => {
     if (o.geometry && !unitGeos.has(o.geometry)) o.geometry.dispose();
     if (o.isInstancedMesh) o.dispose();
+    if (o.material?.userData?.disposable) {
+      o.material.map?.dispose();
+      o.material.dispose();
+    }
   });
 }

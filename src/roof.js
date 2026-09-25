@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { UNIT } from './utils.js';
+import { SLAB } from './config.js';
 
 const L = 'roof';
 
@@ -110,11 +111,15 @@ export function createRoof(placer, p, lv, mats, rng) {
   const id = p.buildingDepth - 2 * t;
   const y = lv.roofLevel + 0.06;
 
+  // structural roof slab (ceiling of the top floor) – hidden with the roof to look inside
+  placer.boxMinMax(L, mats.slab, -iw / 2 + 0.005, lv.roofLevel - SLAB.thickness, -id / 2 + 0.005,
+    iw / 2 - 0.005, lv.roofLevel, id / 2 - 0.005);
+
   const geo = new THREE.BoxGeometry(iw - 0.02, 0.06, id - 0.02);
   const tex = mats.roof.userData.texture;
   if (tex) tex.repeat.set(iw / 8, id / 8);
   const membrane = new THREE.Mesh(geo, mats.roof);
-  membrane.position.set(0, lv.roofLevel + 0.03, 0);
+  membrane.position.set(0, lv.roofLevel + 0.031, 0);
   membrane.receiveShadow = true;
   membrane.name = 'roof-membrane';
   placer.mesh(L, membrane);

@@ -1,9 +1,18 @@
 import GUI from 'lil-gui';
 import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET } from './config.js';
+import { FACADES } from './building.js';
+
+/** Display toggles that map directly onto building layers. */
+const LAYER_TOGGLES = {
+  roof: 'roof', hvac: 'hvac', fins: 'fins', windows: 'windows',
+  slabs: 'slabs', interiorWalls: 'interior', stairWalls: 'stairWalls', stairs: 'stairs', labels: 'labels',
+};
+const FACADE_KEYS = { front: 'wallFront', back: 'wallBack', left: 'wallLeft', right: 'wallRight' };
 
 /**
- * lil-gui debug panel + HTML camera preset buttons.
- * `app` exposes: viewer, building(), params, rebuild(), setWireframe(), applyColors().
+ * lil-gui panel + HTML camera preset buttons.
+ * `app` exposes: viewer, building(), params, rebuild(), setWireframe(), applyColors(),
+ * setStairStyle(), setNarrowDoors().
  */
 export function createUI(app) {
   const { viewer, params } = app;
@@ -13,39 +22,75 @@ export function createUI(app) {
     roof: true, hvac: true, fins: true, windows: true,
     shadows: true, wireframe: false, ambientOcclusion: true,
     sunIntensity: viewer.sun.intensity,
+    // walls & interior
+    wallFront: true, wallBack: true, wallLeft: true, wallRight: true,
+    slabs: true, interiorWalls: true, stairWalls: true, stairs: true, labels: true,
+    highlightStairs: false, stairColor: '#e8742c',
+    transparentStairs: false, stairOpacity: 0.35,
+    narrowDoors: false,
   };
   const view = {
     ...VIEW_DEFAULTS,
     resetCamera: () => { viewer.applyPreset(DEFAULT_PRESET); setActive(DEFAULT_PRESET); },
     resetAll: () => resetAll(),
+    showFloor4: () => showFloor4(),
   };
 
   gui.add(view, 'resetAll').name('↺ Reset all to defaults');
 
-  const fView = gui.addFolder('Display');
-  const layerToggle = (key, layers) => fView.add(view, key).onChange((v) => {
-    for (const l of layers) app.building().setLayerVisible(l, v);
-  });
-  layerToggle('roof', ['roof']);
-  layerToggle('hvac', ['hvac']);
-  layerToggle('fins', ['fins']);
-  layerToggle('windows', ['windows']);
-  fView.add(view, 'shadows').onChange((v) => viewer.setShadows(v));
-  fView.add(view, 'ambientOcclusion').name('ambient occlusion').onChange((v) => viewer.setAO(v));
-  fView.add(view, 'wireframe').onChange((v) => app.setWireframe(v));
-  fView.add(view, 'sunIntensity', 0, 5, 0.05).name('sun intensity').onChange((v) => viewer.setSunIntensity(v));
-  fView.add(view, 'resetCamera').name('Reset camera');
-  fView.add({ reset: () => resetDisplay() }, 'reset').name('↺ Default display');
+  /** Pushes every display option in `view` onto the scene. */
+  function applyView() {
+    const b = app.building();
+    for (const [k, layer] of Object.entries(LAYER_TOGGLES)) b.setLayerVisible(layer, view[k]);
+    for (const f of FACADES) b.setScopeVisible(f, view[FACADE_KEYS[f]]);
+    viewer.setShadows(view.shadows);
+    viewer.setAO(view.ambientOcclusion);
+    viewer.setSunIntensity(view.sunIntensity);
+    app.setWireframe(view.wireframe);
+    app.setStairStyle({
+      highlight: view.highlightStairs, color: view.stairColor,
+      transparent: view.transparentStairs, opacity: view.stairOpacity,
+    });
+    app.setNarrowDoors(view.narrowDoors);
+  }
 
+  // ---------------- Display ----------------
+  const fView = gui.addFolder('Display');
+  for (const key of ['roof', 'hvac', 'fins', 'windows']) fView.add(view, key).onChange(applyView);
+  fView.add(view, 'shadows').onChange(applyView);
+  fView.add(view, 'ambientOcclusion').name('ambient occlusion').onChange(applyView);
+  fView.add(view, 'wireframe').onChange(applyView);
+  fView.add(view, 'sunIntensity', 0, 5, 0.05).name('sun intensity').onChange(applyView);
+  fView.add(view, 'resetCamera').name('Reset camera');
+
+  // ---------------- Walls & interior ----------------
+  const fWalls = gui.addFolder('Walls & interior');
+  fWalls.add(view, 'showFloor4').name('▸ Look into 4th floor');
+  fWalls.add(view, 'wallFront').name('front facade').onChange(applyView);
+  fWalls.add(view, 'wallBack').name('back facade').onChange(applyView);
+  fWalls.add(view, 'wallLeft').name('left facade').onChange(applyView);
+  fWalls.add(view, 'wallRight').name('right facade').onChange(applyView);
+  fWalls.add(view, 'interiorWalls').name('4th floor walls & doors').onChange(applyView);
+  fWalls.add(view, 'stairWalls').name('stair core walls').onChange(applyView);
+  fWalls.add(view, 'slabs').name('floor slabs').onChange(applyView);
+  fWalls.add(view, 'labels').name('room names').onChange(applyView);
+  fWalls.add(view, 'narrowDoors').name('mark doors < 900 mm').onChange(applyView);
+
+  const fStairs = fWalls.addFolder('Stairs');
+  fStairs.add(view, 'stairs').name('show stairs').onChange(applyView);
+  fStairs.add(view, 'highlightStairs').name('highlight colour').onChange(applyView);
+  fStairs.addColor(view, 'stairColor').name('colour').onChange(applyView);
+  fStairs.add(view, 'transparentStairs').name('transparent flights').onChange(applyView);
+  fStairs.add(view, 'stairOpacity', 0.05, 1, 0.05).name('opacity').onChange(applyView);
+
+  gui.add({ reset: () => resetDisplay() }, 'reset').name('↺ Default display, walls & interior');
+
+  // ---------------- Parameters ----------------
   // Parametric model – geometry is regenerated on change
   const fParams = gui.addFolder('Parameters (rebuild)');
   const rebuild = () => {
     app.rebuild();
-    // keep display toggles after rebuild
-    for (const [k, layers] of Object.entries({ roof: ['roof'], hvac: ['hvac'], fins: ['fins'], windows: ['windows'] })) {
-      for (const l of layers) app.building().setLayerVisible(l, view[k]);
-    }
-    app.setWireframe(view.wireframe);
+    applyView(); // keep display toggles after rebuild
   };
   fParams.add(params, 'buildingWidth', 30, 70, 0.5).name('building width').onFinishChange(rebuild);
   fParams.add(params, 'buildingDepth', 8, 20, 0.5).name('building depth').onFinishChange(rebuild);
@@ -61,6 +106,7 @@ export function createUI(app) {
   fParams.add({ reset: () => resetParams() }, 'reset').name('↺ Default parameters');
   fParams.close();
 
+  // ---------------- Colours ----------------
   const fColors = gui.addFolder('Colours');
   for (const key of Object.keys(params.colors)) {
     fColors.addColor(params.colors, key).onChange(() => app.applyColors());
@@ -84,13 +130,10 @@ export function createUI(app) {
     refreshControls();
   }
 
+  /** Display + walls & interior toggles → defaults. */
   function resetDisplay() {
     Object.assign(view, VIEW_DEFAULTS);
-    for (const l of ['roof', 'hvac', 'fins', 'windows']) app.building().setLayerVisible(l, view[l]);
-    viewer.setShadows(view.shadows);
-    viewer.setAO(view.ambientOcclusion);
-    viewer.setSunIntensity(view.sunIntensity);
-    app.setWireframe(view.wireframe);
+    applyView();
     refreshControls();
   }
 
@@ -102,30 +145,40 @@ export function createUI(app) {
     view.resetCamera();
   }
 
+  /** Cutaway: hide roof and front facade, then look down into the top floor. */
+  function showFloor4() {
+    view.roof = false;
+    view.wallFront = false;
+    applyView();
+    refreshControls();
+    viewer.applyPreset('Interior');
+    setActive('Interior');
+  }
+
   // HTML preset buttons (bottom of the screen)
   const bar = document.getElementById('presets');
   const buttons = {};
   const setActive = (name) => {
     for (const [n, b] of Object.entries(buttons)) b.classList.toggle('active', n === name);
   };
-  for (const name of Object.keys(CAMERA_PRESETS)) {
+  const addButton = (label, onClick, title) => {
     const b = document.createElement('button');
-    b.textContent = name;
-    b.addEventListener('click', () => { viewer.applyPreset(name); setActive(name); });
+    b.textContent = label;
+    if (title) b.title = title;
+    b.addEventListener('click', onClick);
     bar.appendChild(b);
-    buttons[name] = b;
+    return b;
+  };
+  for (const name of Object.keys(CAMERA_PRESETS)) {
+    if (name === 'Interior') continue;
+    buttons[name] = addButton(name, () => { viewer.applyPreset(name); setActive(name); });
   }
-  const reset = document.createElement('button');
-  reset.textContent = 'Reset camera';
-  reset.addEventListener('click', view.resetCamera);
-  bar.appendChild(reset);
-  const resetEverything = document.createElement('button');
-  resetEverything.textContent = 'Reset all';
-  resetEverything.title = 'Restore all parameters, colours, display options and the camera';
-  resetEverything.addEventListener('click', resetAll);
-  bar.appendChild(resetEverything);
+  buttons.Interior = addButton('4th floor', showFloor4, 'Hide roof and front facade, look into the 4th floor');
+  addButton('Reset camera', view.resetCamera);
+  addButton('Reset all', resetAll, 'Restore all parameters, colours, display options and the camera');
   setActive(DEFAULT_PRESET);
   viewer.controls.addEventListener('start', () => setActive(null));
 
+  applyView();
   return gui;
 }

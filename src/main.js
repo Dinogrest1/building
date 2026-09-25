@@ -1,6 +1,6 @@
 import { Viewer } from './scene.js';
 import { Building } from './building.js';
-import { createMaterials, applyColors, setWireframe } from './materials.js';
+import { createMaterials, applyColors, setWireframe, setStairStyle, setNarrowDoorHighlight } from './materials.js';
 import { DEFAULT_PARAMS } from './config.js';
 import { createUI } from './ui.js';
 
@@ -23,6 +23,8 @@ const app = {
   },
   setWireframe: (v) => setWireframe(materials, v),
   applyColors: () => applyColors(materials, params.colors),
+  setStairStyle: (style) => setStairStyle(materials, style),
+  setNarrowDoors: (v) => setNarrowDoorHighlight(materials, v),
 };
 
 createUI(app);
