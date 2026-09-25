@@ -1,5 +1,5 @@
 import GUI from 'lil-gui';
-import { CAMERA_PRESETS, DEFAULT_PRESET } from './config.js';
+import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET } from './config.js';
 
 /**
  * lil-gui debug panel + HTML camera preset buttons.
@@ -9,12 +9,18 @@ export function createUI(app) {
   const { viewer, params } = app;
   const gui = new GUI({ title: 'Building' });
 
-  const view = {
+  const VIEW_DEFAULTS = {
     roof: true, hvac: true, fins: true, windows: true,
     shadows: true, wireframe: false, ambientOcclusion: true,
     sunIntensity: viewer.sun.intensity,
-    resetCamera: () => { viewer.applyPreset(DEFAULT_PRESET); setActive(DEFAULT_PRESET); },
   };
+  const view = {
+    ...VIEW_DEFAULTS,
+    resetCamera: () => { viewer.applyPreset(DEFAULT_PRESET); setActive(DEFAULT_PRESET); },
+    resetAll: () => resetAll(),
+  };
+
+  gui.add(view, 'resetAll').name('↺ Reset all to defaults');
 
   const fView = gui.addFolder('Display');
   const layerToggle = (key, layers) => fView.add(view, key).onChange((v) => {
@@ -59,6 +65,21 @@ export function createUI(app) {
   }
   fColors.close();
 
+  /** Restores every parameter, colour, display toggle and the camera. */
+  function resetAll() {
+    const { colors, ...rest } = structuredClone(DEFAULT_PARAMS);
+    Object.assign(params, rest);
+    Object.assign(params.colors, colors); // keep the object the colour controllers are bound to
+    Object.assign(view, VIEW_DEFAULTS);
+    viewer.setShadows(view.shadows);
+    viewer.setAO(view.ambientOcclusion);
+    viewer.setSunIntensity(view.sunIntensity);
+    app.applyColors();
+    rebuild();
+    for (const c of gui.controllersRecursive()) c.updateDisplay();
+    view.resetCamera();
+  }
+
   // HTML preset buttons (bottom of the screen)
   const bar = document.getElementById('presets');
   const buttons = {};
@@ -76,6 +97,11 @@ export function createUI(app) {
   reset.textContent = 'Reset camera';
   reset.addEventListener('click', view.resetCamera);
   bar.appendChild(reset);
+  const resetEverything = document.createElement('button');
+  resetEverything.textContent = 'Reset all';
+  resetEverything.title = 'Restore all parameters, colours, display options and the camera';
+  resetEverything.addEventListener('click', resetAll);
+  bar.appendChild(resetEverything);
   setActive(DEFAULT_PRESET);
   viewer.controls.addEventListener('start', () => setActive(null));
 

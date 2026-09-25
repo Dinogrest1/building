@@ -15,6 +15,7 @@ npm run build    # production build in dist/
 
 * Left mouse: rotate · wheel: zoom · right mouse: pan (damped; distance and target are clamped)
 * Bottom bar: camera presets (Front Right, Front, Front Left, Top Isometric, Right Side, Roof) with animated transitions, plus Reset camera
+* **Reset all** (bottom bar and top of the panel) restores every parameter, colour, display option and the camera to the defaults in `src/config.js`
 * lil-gui panel:
   * **Display**: toggle roof, HVAC, fins, windows, shadows, ambient occlusion (GTAO) and wireframe; set sun intensity; reset the camera
   * **Parameters (rebuild)**: width, depth, floors, floor height, parapet height, number of window modules, pane width, window height, sill height, HVAC density, random seed
