@@ -24,6 +24,7 @@ export class Viewer {
     renderer.toneMapping = THREE.NeutralToneMapping;
     renderer.toneMappingExposure = 0.9;
     renderer.shadowMap.enabled = true;
+    renderer.localClippingEnabled = true; // section cut
     renderer.shadowMap.type = THREE.PCFShadowMap;
     container.appendChild(renderer.domElement);
     this.renderer = renderer;

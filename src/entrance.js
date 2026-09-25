@@ -1,6 +1,7 @@
 import { ENTRANCE, SMALL_DOOR } from './config.js';
 
-const L = 'entrance';
+const L = 'entrance';   // doors (part of the facade)
+// front additions are separate layers: 'porch' (landing, steps, railings, pads) and 'canopies'
 
 /** Double glass door leaf set, fitted into a recessed opening. */
 function createDoubleDoor(placer, o, mats, z) {
@@ -47,33 +48,33 @@ export function createEntrance(placer, o, p, mats) {
   const cu0 = u0 - E.canopyOverhang;
   const cu1 = u0 + w + E.canopyOverhang;
   const cTop = v0 + h + 0.45;
-  placer.boxMinMax(L, mats.concrete, cu0, cTop - E.canopyThickness, 0, cu1, cTop, E.canopyDepth);
-  placer.boxMinMax(L, mats.fin, cu0 - 0.02, cTop - E.canopyThickness - 0.06, E.canopyDepth - 0.06, cu1 + 0.02, cTop + 0.03, E.canopyDepth + 0.02);
+  placer.boxMinMax('canopies', mats.concrete, cu0, cTop - E.canopyThickness, 0, cu1, cTop, E.canopyDepth);
+  placer.boxMinMax('canopies', mats.fin, cu0 - 0.02, cTop - E.canopyThickness - 0.06, E.canopyDepth - 0.06, cu1 + 0.02, cTop + 0.03, E.canopyDepth + 0.02);
   for (const cu of [cu0 + 0.15, cu1 - 0.15]) {
-    placer.rod(L, mats.metal, [cu, cTop + 1.0, 0.02], [cu, cTop, E.canopyDepth - 0.1], 0.02);
+    placer.rod('canopies', mats.metal, [cu, cTop + 1.0, 0.02], [cu, cTop, E.canopyDepth - 0.1], 0.02);
   }
 
   // landing
   const landU0 = u0 - E.landingExtraLeft;
   const stairU0 = u0 + w + 0.35;
-  placer.boxMinMax(L, mats.concrete, landU0, 0, 0.001, stairU0, gl, E.landingDepth);
-  placer.boxMinMax(L, mats.plinth, landU0 - 0.02, gl - 0.06, E.landingDepth - 0.02, stairU0, gl + 0.005, E.landingDepth + 0.02);
+  placer.boxMinMax('porch', mats.concrete, landU0, 0, 0.001, stairU0, gl, E.landingDepth);
+  placer.boxMinMax('porch', mats.plinth, landU0 - 0.02, gl - 0.06, E.landingDepth - 0.02, stairU0, gl + 0.005, E.landingDepth + 0.02);
 
   // stair: n risers, n-1 stepped blocks (the landing is the top step)
   const n = Math.ceil(gl / E.riserMax);
   const riser = gl / n;
   const sw = E.stairWidth;
   for (let k = 1; k < n; k++) {
-    placer.boxMinMax(L, mats.concrete, stairU0 + (k - 1) * E.tread, 0, 0.001, stairU0 + k * E.tread, gl - k * riser, sw);
+    placer.boxMinMax('porch', mats.concrete, stairU0 + (k - 1) * E.tread, 0, 0.001, stairU0 + k * E.tread, gl - k * riser, sw);
   }
   const stairU1 = stairU0 + (n - 1) * E.tread;
   // stair cheek wall
-  placer.boxMinMax(L, mats.plinth, stairU0, 0, sw, stairU1 + 0.02, 0.12, sw + 0.12);
+  placer.boxMinMax('porch', mats.plinth, stairU0, 0, sw, stairU1 + 0.02, 0.12, sw + 0.12);
 
   // ----- railings -----
   const rh = E.railHeight;
-  const post = (u, y, z) => placer.rod(L, mats.metal, [u, y, z], [u, y + rh, z], 0.024);
-  const rail = (a, b, r = 0.022) => placer.rod(L, mats.metal, a, b, r);
+  const post = (u, y, z) => placer.rod('porch', mats.metal, [u, y, z], [u, y + rh, z], 0.024);
+  const rail = (a, b, r = 0.022) => placer.rod('porch', mats.metal, a, b, r);
 
   // stair outer rail (sloped)
   const zr = sw + 0.06;
@@ -117,8 +118,8 @@ export function createSmallDoor(placer, o, mats) {
   // canopy
   const cu = u0 + w / 2;
   const ct = v0 + h + 0.35;
-  placer.box(L, mats.concrete, cu, ct - 0.06, S.canopyDepth / 2, S.canopyWidth, 0.12, S.canopyDepth);
-  placer.box(L, mats.fin, cu, ct - 0.08, S.canopyDepth, S.canopyWidth + 0.04, 0.18, 0.04);
+  placer.box('canopies', mats.concrete, cu, ct - 0.06, S.canopyDepth / 2, S.canopyWidth, 0.12, S.canopyDepth);
+  placer.box('canopies', mats.fin, cu, ct - 0.08, S.canopyDepth, S.canopyWidth + 0.04, 0.18, 0.04);
   // pad
-  placer.box(L, mats.concrete, cu, 0.06, 0.6, S.canopyWidth, 0.12, 1.2);
+  placer.box('porch', mats.concrete, cu, 0.06, 0.6, S.canopyWidth, 0.12, 1.2);
 }

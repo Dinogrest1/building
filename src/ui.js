@@ -2,12 +2,12 @@ import GUI from 'lil-gui';
 import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET } from './config.js';
 import { FACADES } from './building.js';
 import { NAV } from './navigation.js';
-import * as THREE from 'three';
 
 /** Display toggles that map directly onto building layers. */
 const LAYER_TOGGLES = {
   roof: 'roof', hvac: 'hvac', fins: 'fins', windows: 'windows',
   slabs: 'slabs', interiorWalls: 'interior', stairWalls: 'stairWalls', stairs: 'stairs', labels: 'labels',
+  porch: 'porch', canopies: 'canopies', annex: 'annex', entranceDoors: 'entrance', service: 'service',
 };
 const FACADE_KEYS = { front: 'wallFront', back: 'wallBack', left: 'wallLeft', right: 'wallRight' };
 
@@ -30,22 +30,36 @@ export function createUI(app) {
     highlightStairs: false, stairColor: '#e8742c',
     transparentStairs: false, stairOpacity: 0.35,
     narrowDoors: false,
+    // additions in front of the main facade
+    porch: true, canopies: true, annex: true, entranceDoors: true, service: true,
+    // section through the stair shafts
+    section: false, sectionDepth: 4.2,
   };
   const view = {
     ...VIEW_DEFAULTS,
     resetCamera: () => { viewer.applyPreset(DEFAULT_PRESET); setActive(DEFAULT_PRESET); },
     resetAll: () => resetAll(),
     showFloor4: () => showFloor4(),
+    showStairShafts: () => showStairShafts(),
   };
 
   gui.add(view, 'resetAll').name('↺ Reset all to defaults');
 
   // ---------------- Camera / navigation ----------------
   const nav = viewer.nav;
-  const camState = { speed: NAV.speed, walk: () => toggleWalk() };
+  const camState = { speed: NAV.speed, fov: viewer.camera.fov, walk: () => toggleWalk() };
   const fCam = gui.addFolder('Camera');
   const walkCtrl = fCam.add(camState, 'walk').name('▸ Walk mode (first person)');
-  fCam.add(camState, 'speed', 1, 30, 0.5).name('move speed, m/s').onChange((v) => { nav.speed = v; });
+  fCam.add(camState, 'speed', 1, 60, 0.5).name('move speed, m/s').onChange((v) => { nav.speed = v; });
+  const fovCtrl = fCam.add(camState, 'fov', 5, 90, 1).name('lens (field of view), °').onChange((v) => {
+    viewer.anim = null;
+    viewer.camera.fov = v;
+    viewer.camera.updateProjectionMatrix();
+  });
+  // keep the lens slider in sync when presets animate the field of view
+  viewer.controls.addEventListener('change', () => {
+    if (Math.abs(camState.fov - viewer.camera.fov) > 0.5) { camState.fov = Math.round(viewer.camera.fov); fovCtrl.updateDisplay(); }
+  });
   fCam.add(view, 'resetCamera').name('Reset camera');
 
   const HINTS = {
@@ -62,15 +76,9 @@ export function createUI(app) {
   };
   nav.onChange(syncNav);
 
-  /** Walk mode starts where the camera is when close; from far away it starts in the 4th-floor corridor. */
+  /** Walk mode continues from the current camera position, direction and lens. */
   function toggleWalk() {
-    if (nav.mode === 'walk') { nav.setMode('orbit'); return; }
-    const far = viewer.camera.position.distanceTo(viewer.controls.target) > 45;
-    if (!far) { nav.setMode('walk'); return; }
-    const lv = app.building().layout.levels;
-    const floor = lv.floor(Math.min(3, params.floorCount - 1));
-    const x0 = -params.buildingWidth * 0.2;
-    nav.startWalk(new THREE.Vector3(x0, floor + 1.6, 0), new THREE.Vector3(x0 + 10, floor + 1.5, 0));
+    nav.toggle();
   }
 
   /** Pushes every display option in `view` onto the scene. */
@@ -87,6 +95,8 @@ export function createUI(app) {
       transparent: view.transparentStairs, opacity: view.stairOpacity,
     });
     app.setNarrowDoors(view.narrowDoors);
+    app.setSection(view.section ? view.sectionDepth : null);
+    viewer.setAO(view.ambientOcclusion && !view.section); // AO pass ignores clipping
   }
 
   // ---------------- Display ----------------
@@ -116,6 +126,20 @@ export function createUI(app) {
   fStairs.addColor(view, 'stairColor').name('colour').onChange(applyView);
   fStairs.add(view, 'transparentStairs').name('transparent flights').onChange(applyView);
   fStairs.add(view, 'stairOpacity', 0.05, 1, 0.05).name('opacity').onChange(applyView);
+
+  // ---------------- Front additions ----------------
+  const fFront = gui.addFolder('Front additions');
+  fFront.add(view, 'porch').name('entrance porch & steps').onChange(applyView);
+  fFront.add(view, 'canopies').name('canopies').onChange(applyView);
+  fFront.add(view, 'annex').name('technical annex').onChange(applyView);
+  fFront.add(view, 'entranceDoors').name('entrance & utility doors').onChange(applyView);
+  fFront.add(view, 'service').name('roller shutters & grilles').onChange(applyView);
+
+  // ---------------- Section through the stair shafts ----------------
+  const fSection = gui.addFolder('Section (stair shafts)');
+  fSection.add(view, 'showStairShafts').name('▸ Show stair shafts');
+  fSection.add(view, 'section').name('section cut').onChange(applyView);
+  fSection.add(view, 'sectionDepth', 0, 13, 0.1).name('cut depth from facade, m').onChange(applyView);
 
   gui.add({ reset: () => resetDisplay() }, 'reset').name('↺ Default display, walls & interior');
 
@@ -189,6 +213,20 @@ export function createUI(app) {
     setActive('Interior');
   }
 
+  /** Cuts away the front of the building just in front of the stair flights. */
+  function showStairShafts() {
+    const well = app.building().wells?.[0];
+    view.section = true;
+    view.sectionDepth = well ? +(params.buildingDepth / 2 - well.zs + 0.25).toFixed(1) : 4.2;
+    view.highlightStairs = true;
+    view.stairWalls = true;
+    view.roof = true;
+    applyView();
+    refreshControls();
+    viewer.applyPreset('Section');
+    setActive('Section');
+  }
+
   // HTML preset buttons (bottom of the screen)
   const bar = document.getElementById('presets');
   const buttons = {};
@@ -204,10 +242,11 @@ export function createUI(app) {
     return b;
   };
   for (const name of Object.keys(CAMERA_PRESETS)) {
-    if (name === 'Interior') continue;
+    if (name === 'Interior' || name === 'Section') continue;
     buttons[name] = addButton(name, () => { viewer.applyPreset(name); setActive(name); });
   }
   buttons.Interior = addButton('4th floor', showFloor4, 'Hide roof and front facade, look into the 4th floor');
+  buttons.Section = addButton('Stair shafts', showStairShafts, 'Section cut through both stair shafts');
   const walkBtn = addButton('Walk', toggleWalk, 'First-person walk: drag to look, WASD to move');
   addButton('Reset camera', view.resetCamera);
   addButton('Reset all', resetAll, 'Restore all parameters, colours, display options and the camera');

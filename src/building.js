@@ -12,6 +12,7 @@ import { InstanceSink, Placer, createRng, disposeObject } from './utils.js';
 export const LAYERS = [
   'structure', 'windows', 'fins', 'hvac', 'entrance', 'service', 'roof',
   'slabs', 'interior', 'stairWalls', 'stairs', 'labels',
+  'porch', 'canopies', 'annex', // additions in front of the main facade
 ];
 
 /** Scopes: each facade and each storey can be hidden on its own. */

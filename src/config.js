@@ -189,5 +189,7 @@ export const CAMERA_PRESETS = {
   Roof: [[0, 280, 45], [0, 12, 0]],
   // cutaway into the top floor (roof + front facade hidden)
   Interior: [[22, 165, 118], [0, 8, 0]],
+  // section through both stair shafts (front part of the building cut away)
+  Section: [[55, 60, 205], [0, 7, 0]],
 };
 export const DEFAULT_PRESET = 'Front Right';

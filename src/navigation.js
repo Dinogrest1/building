@@ -5,10 +5,9 @@ export const NAV = {
   speed: 8,          // m/s
   fastFactor: 3,     // with Shift
   lookSpeed: 0.0032, // rad per pixel of drag
-  walkFov: 60,       // wide lens for first-person view
   walkNear: 0.05,
   orbitNear: 1,
-  exitDistance: 8,   // orbit pivot placed this far ahead when leaving walk mode
+  exitDistance: 8,   // fallback pivot distance when leaving walk mode
 };
 
 const KEYS = {
@@ -78,15 +77,15 @@ export class Navigation {
     const cam = v.camera;
     v.anim = null;
     if (mode === 'walk') {
-      cam.fov = NAV.walkFov;
+      // start exactly where the camera is: same position, direction and lens
+      this.orbitDistance = cam.position.distanceTo(v.controls.target);
       cam.near = NAV.walkNear;
       v.controls.enabled = false;
     } else {
-      // keep the wide walk lens so orbiting nearby feels natural; presets restore the long lens
       cam.near = NAV.orbitNear;
       // pivot straight ahead so orbiting continues from where the walk ended
       cam.getWorldDirection(_fwd);
-      v.controls.target.copy(cam.position).addScaledVector(_fwd, NAV.exitDistance);
+      v.controls.target.copy(cam.position).addScaledVector(_fwd, this.orbitDistance ?? NAV.exitDistance);
       v.controls.enabled = true;
       v.controls.update();
     }
@@ -96,14 +95,6 @@ export class Navigation {
   }
 
   toggle() { this.setMode(this.mode === 'walk' ? 'orbit' : 'walk'); }
-
-  /** Enters walk mode at `position`, looking at `lookAt`. */
-  startWalk(position, lookAt) {
-    const cam = this.viewer.camera;
-    this.setMode('walk');
-    cam.position.copy(position);
-    cam.lookAt(lookAt);
-  }
 
   /** Per-frame keyboard movement. */
   update(dt) {

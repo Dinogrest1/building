@@ -19,7 +19,7 @@ export function createShutter(placer, o, mats) {
   // drum housing on the wall face above the opening
   placer.boxMinMax(L, mats.shutter, u0 - 0.08, v0 + h, 0, u0 + w + 0.08, v0 + h + 0.3, 0.28);
   // projecting canopy slab above
-  placer.boxMinMax(L, mats.concrete, u0 - 0.25, v0 + h + 0.3, 0, u0 + w + 0.25, v0 + h + 0.4, SERVICE.canopyDepth);
+  placer.boxMinMax('canopies', mats.concrete, u0 - 0.25, v0 + h + 0.3, 0, u0 + w + 0.25, v0 + h + 0.4, SERVICE.canopyDepth);
 }
 
 /** Recessed louvred ventilation grille. */
@@ -54,10 +54,10 @@ export function createEnclosure(placer, u, mats) {
   const E = SERVICE.enclosure;
   const u0 = u - E.width / 2;
   const u1 = u + E.width / 2;
-  placer.boxMinMax(L, mats.facade, u0, 0, 0.001, u1, E.height, E.depth);
-  placer.boxMinMax(L, mats.coping, u0 - COPING.overhang, E.height, 0.001, u1 + COPING.overhang, E.height + COPING.height, E.depth + COPING.overhang);
-  placer.boxMinMax(L, mats.plinth, u0 - 0.03, 0, 0.001, u1 + 0.03, 0.35, E.depth + 0.03);
+  placer.boxMinMax('annex', mats.facade, u0, 0, 0.001, u1, E.height, E.depth);
+  placer.boxMinMax('annex', mats.coping, u0 - COPING.overhang, E.height, 0.001, u1 + COPING.overhang, E.height + COPING.height, E.depth + COPING.overhang);
+  placer.boxMinMax('annex', mats.plinth, u0 - 0.03, 0, 0.001, u1 + 0.03, 0.35, E.depth + 0.03);
   // metal service door + small louvre in the front
-  placer.boxMinMax(L, mats.door, u0 + 0.5, 0.35, E.depth, u0 + 1.4, 1.7, E.depth + 0.03);
-  placer.boxMinMax(L, mats.grille, u1 - 1.0, 1.0, E.depth, u1 - 0.4, 1.5, E.depth + 0.02);
+  placer.boxMinMax('annex', mats.door, u0 + 0.5, 0.35, E.depth, u0 + 1.4, 1.7, E.depth + 0.03);
+  placer.boxMinMax('annex', mats.grille, u1 - 1.0, 1.0, E.depth, u1 - 0.4, 1.5, E.depth + 0.02);
 }

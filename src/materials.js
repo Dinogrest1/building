@@ -163,3 +163,21 @@ export function setNarrowDoorHighlight(materials, enabled) {
   materials.doorFrameNarrow.color.set(enabled ? '#d9342b' : DOOR_FRAME_COLOR);
   materials.doorFrameNarrow.emissive.set(enabled ? '#5a0d08' : '#000000');
 }
+
+/** Materials that stay whole in a section cut, so the stairs read through every floor. */
+const SECTION_KEEP = new Set(['stair', 'stairNosing', 'steel', 'railGlass']);
+
+/**
+ * Section cut: everything in front of `plane` is clipped away except the stairs.
+ * Pass null to remove the cut. Cut members show their back faces so they read as solids.
+ */
+export function setSectionCut(materials, plane) {
+  for (const [key, m] of Object.entries(materials)) {
+    if (SECTION_KEEP.has(key)) continue;
+    const had = m.clippingPlanes?.length > 0;
+    m.clippingPlanes = plane ? [plane] : [];
+    m.clipShadows = true;
+    m.side = plane && key !== 'glass' ? THREE.DoubleSide : THREE.FrontSide;
+    if (had !== Boolean(plane)) m.needsUpdate = true;
+  }
+}
