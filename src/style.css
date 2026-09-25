@@ -25,7 +25,7 @@ html, body {
   user-select: none;
 }
 #hud .title { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
-#hud .hint { font-size: 12px; opacity: 0.6; margin-top: 3px; }
+#hud .hint { font-size: 12px; opacity: 0.6; margin-top: 3px; max-width: min(60vw, 640px); }
 
 #presets {
   position: fixed;

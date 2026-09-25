@@ -14,6 +14,9 @@ npm run build    # production build in dist/
 ## Controls
 
 * Left mouse: rotate · wheel: zoom · right mouse: pan (damped; distance and target are clamped)
+* W/A/S/D or arrows: move the camera together with its pivot · Q/E: down/up · Shift: faster
+* Double-click a surface: make it the new rotation pivot
+* **Walk** (bottom bar or *Camera* folder): first-person mode, drag to look around, WASD to walk, Q/E down/up, wheel steps forward, Esc exits. Started from far away it begins in the 4th-floor corridor.
 * Bottom bar: camera presets (Front Right, Front, Front Left, Top Isometric, Right Side, Roof) with animated transitions, plus Reset camera
 * **Reset all** (bottom bar and top of the panel) restores every parameter, colour, display option and the camera to the defaults in `src/config.js`
 * Each panel section also has its own reset: **Default display**, **Default parameters** (one rebuild with the default geometry) and **Default colours**

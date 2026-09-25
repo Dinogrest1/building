@@ -6,6 +6,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { CAMERA_PRESETS, CAMERA_FOV, DEFAULT_PRESET } from './config.js';
+import { Navigation } from './navigation.js';
 
 const BACKGROUND = 0xf3f3f1;
 
@@ -45,7 +46,7 @@ export class Viewer {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
     controls.dampingFactor = 0.08;
-    controls.minDistance = 6;
+    controls.minDistance = 0.5;
     controls.maxDistance = 520;
     controls.maxPolarAngle = Math.PI * 0.495; // stay above the ground
     controls.screenSpacePanning = true;
@@ -53,6 +54,8 @@ export class Viewer {
     this.targetBounds = new THREE.Box3(new THREE.Vector3(-35, 0, -25), new THREE.Vector3(35, 20, 25));
     controls.addEventListener('change', () => controls.target.clamp(this.targetBounds.min, this.targetBounds.max));
     controls.addEventListener('start', () => { this.anim = null; });
+
+    this.nav = new Navigation(this);
 
     this.setupComposer();
     this.applyPreset(DEFAULT_PRESET, false);
@@ -122,16 +125,19 @@ export class Viewer {
     this.sun.intensity = v;
   }
 
-  /** Moves the camera to a named preset, animated by default. */
+  /** Moves the camera to a named preset (back in orbit mode), animated by default. */
   applyPreset(name, animate = true) {
     const preset = CAMERA_PRESETS[name];
     if (!preset) return;
+    this.nav?.setMode('orbit');
     const [pos, target] = preset;
     const toPos = new THREE.Vector3(...pos);
     const toTarget = new THREE.Vector3(...target);
     if (!animate) {
       this.camera.position.copy(toPos);
       this.controls.target.copy(toTarget);
+      this.camera.fov = CAMERA_FOV;
+      this.camera.updateProjectionMatrix();
       this.controls.update();
       this.anim = null;
       return;
@@ -139,7 +145,23 @@ export class Viewer {
     this.anim = {
       fromPos: this.camera.position.clone(),
       fromTarget: this.controls.target.clone(),
-      toPos, toTarget, t: 0, duration: 1.1,
+      fromFov: this.camera.fov,
+      toPos, toTarget, toFov: CAMERA_FOV, t: 0, duration: 1.1,
+    };
+  }
+
+  /** Keeps the camera offset but moves the orbit pivot to `point` (animated). */
+  focusOn(point) {
+    const offset = this.camera.position.clone().sub(this.controls.target);
+    const toTarget = point.clone().clamp(this.targetBounds.min, this.targetBounds.max);
+    // come a bit closer when the view is far away from the new pivot
+    const dist = Math.min(offset.length(), Math.max(15, offset.length() * 0.6));
+    this.anim = {
+      fromPos: this.camera.position.clone(),
+      fromTarget: this.controls.target.clone(),
+      fromFov: this.camera.fov,
+      toPos: toTarget.clone().add(offset.setLength(dist)),
+      toTarget, toFov: this.camera.fov, t: 0, duration: 0.7,
     };
   }
 
@@ -150,6 +172,10 @@ export class Viewer {
     const k = a.t < 0.5 ? 4 * a.t ** 3 : 1 - (-2 * a.t + 2) ** 3 / 2; // easeInOutCubic
     this.camera.position.lerpVectors(a.fromPos, a.toPos, k);
     this.controls.target.lerpVectors(a.fromTarget, a.toTarget, k);
+    if (a.fromFov !== a.toFov) {
+      this.camera.fov = a.fromFov + (a.toFov - a.fromFov) * k;
+      this.camera.updateProjectionMatrix();
+    }
     if (a.t >= 1) this.anim = null;
   }
 
@@ -170,7 +196,8 @@ export class Viewer {
       timer.update(time);
       const dt = Math.min(timer.getDelta(), 0.1);
       this.updateAnimation(dt);
-      this.controls.update();
+      this.nav.update(dt);
+      if (this.nav.mode === 'orbit') this.controls.update();
       this.composer.render();
       requestAnimationFrame(loop);
     };

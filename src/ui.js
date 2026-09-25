@@ -1,6 +1,8 @@
 import GUI from 'lil-gui';
 import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET } from './config.js';
 import { FACADES } from './building.js';
+import { NAV } from './navigation.js';
+import * as THREE from 'three';
 
 /** Display toggles that map directly onto building layers. */
 const LAYER_TOGGLES = {
@@ -38,6 +40,39 @@ export function createUI(app) {
 
   gui.add(view, 'resetAll').name('↺ Reset all to defaults');
 
+  // ---------------- Camera / navigation ----------------
+  const nav = viewer.nav;
+  const camState = { speed: NAV.speed, walk: () => toggleWalk() };
+  const fCam = gui.addFolder('Camera');
+  const walkCtrl = fCam.add(camState, 'walk').name('▸ Walk mode (first person)');
+  fCam.add(camState, 'speed', 1, 30, 0.5).name('move speed, m/s').onChange((v) => { nav.speed = v; });
+  fCam.add(view, 'resetCamera').name('Reset camera');
+
+  const HINTS = {
+    orbit: 'Drag: rotate · Right drag: pan · Wheel: zoom · WASD/arrows: move · Q/E: down/up · Shift: faster · Double-click: new pivot',
+    walk: 'Walk mode · Drag: look around · WASD/arrows: walk · Q/E: down/up · Wheel: step · Shift: faster · Esc: exit',
+  };
+  const hint = document.querySelector('#hud .hint');
+  const syncNav = (mode) => {
+    if (hint) hint.textContent = HINTS[mode];
+    walkCtrl.name(mode === 'walk' ? '◂ Exit walk mode' : '▸ Walk mode (first person)');
+    walkBtn?.classList.toggle('active', mode === 'walk');
+    if (walkBtn) walkBtn.textContent = mode === 'walk' ? 'Exit walk' : 'Walk';
+    if (mode === 'walk') setActive(null);
+  };
+  nav.onChange(syncNav);
+
+  /** Walk mode starts where the camera is when close; from far away it starts in the 4th-floor corridor. */
+  function toggleWalk() {
+    if (nav.mode === 'walk') { nav.setMode('orbit'); return; }
+    const far = viewer.camera.position.distanceTo(viewer.controls.target) > 45;
+    if (!far) { nav.setMode('walk'); return; }
+    const lv = app.building().layout.levels;
+    const floor = lv.floor(Math.min(3, params.floorCount - 1));
+    const x0 = -params.buildingWidth * 0.2;
+    nav.startWalk(new THREE.Vector3(x0, floor + 1.6, 0), new THREE.Vector3(x0 + 10, floor + 1.5, 0));
+  }
+
   /** Pushes every display option in `view` onto the scene. */
   function applyView() {
     const b = app.building();
@@ -61,7 +96,6 @@ export function createUI(app) {
   fView.add(view, 'ambientOcclusion').name('ambient occlusion').onChange(applyView);
   fView.add(view, 'wireframe').onChange(applyView);
   fView.add(view, 'sunIntensity', 0, 5, 0.05).name('sun intensity').onChange(applyView);
-  fView.add(view, 'resetCamera').name('Reset camera');
 
   // ---------------- Walls & interior ----------------
   const fWalls = gui.addFolder('Walls & interior');
@@ -174,11 +208,13 @@ export function createUI(app) {
     buttons[name] = addButton(name, () => { viewer.applyPreset(name); setActive(name); });
   }
   buttons.Interior = addButton('4th floor', showFloor4, 'Hide roof and front facade, look into the 4th floor');
+  const walkBtn = addButton('Walk', toggleWalk, 'First-person walk: drag to look, WASD to move');
   addButton('Reset camera', view.resetCamera);
   addButton('Reset all', resetAll, 'Restore all parameters, colours, display options and the camera');
   setActive(DEFAULT_PRESET);
   viewer.controls.addEventListener('start', () => setActive(null));
 
+  syncNav(nav.mode);
   applyView();
   return gui;
 }
