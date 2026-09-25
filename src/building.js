@@ -14,6 +14,7 @@ export const LAYERS = [
   'structure', 'windows', 'fins', 'hvac', 'entrance', 'service', 'roof',
   'slabs', 'interior', 'stairWalls', 'stairs', 'labels',
   'porch', 'canopies', 'annex', 'basement', 'arrows', // additions in front of the main facade
+  'markup', 'roomFills', 'routes',                      // 4th-floor plan tools
 ];
 
 /**
@@ -121,7 +122,7 @@ export class Building extends THREE.Group {
     });
     createFloorSlabs(this.placer, p, lv, this.wells.map((w) => w.hole), this.materials);
     for (const w of this.wells) createStairs(this.placer, w, p, lv, this.materials);
-    createPlanFloor(this.placer, p, lv, this.materials);
+    this.rooms = createPlanFloor(this.placer, p, lv, this.materials);
   }
 
   createRoof() {
@@ -146,6 +147,16 @@ export class Building extends THREE.Group {
     for (const g of Object.values(this.parts)) {
       for (const child of g.children) if (child.name === scope) child.visible = visible;
     }
+  }
+
+  /** Per-room controls on the traced floor. */
+  setRoom(i, { fill, color, label, route }) {
+    const room = this.rooms?.[i];
+    if (!room) return;
+    if (color) room.material.color.set(color);
+    if (fill !== undefined) this.setScopeVisible(`fill-${i}`, fill);
+    if (label !== undefined) this.setScopeVisible(`label-${i}`, label);
+    if (route !== undefined) this.setScopeVisible(`route-${i}`, route);
   }
 
   /** Axis-aligned bounds used by the camera/controls. */

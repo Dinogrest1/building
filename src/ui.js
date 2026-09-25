@@ -8,7 +8,7 @@ const LAYER_TOGGLES = {
   roof: 'roof', hvac: 'hvac', fins: 'fins', windows: 'windows',
   slabs: 'slabs', interiorWalls: 'interior', stairWalls: 'stairWalls', stairs: 'stairs', labels: 'labels',
   porch: 'porch', canopies: 'canopies', annex: 'annex', entranceDoors: 'entrance', service: 'service',
-  basement: 'basement', arrows: 'arrows',
+  basement: 'basement', arrows: 'arrows', markup: 'markup',
 };
 const FACADE_KEYS = { front: 'wallFront', back: 'wallBack', left: 'wallLeft', right: 'wallRight' };
 
@@ -35,6 +35,7 @@ export function createUI(app) {
     porch: true, canopies: true, annex: true, entranceDoors: true, service: true,
     basement: true, arrows: true,
     stairFront: true, // facade strips in front of the stair shafts
+    markup: true,     // plan lines on the 4th floor
     // section through the stair shafts
     section: false, sectionDepth: 4.2,
   };
@@ -100,6 +101,7 @@ export function createUI(app) {
     });
     app.setNarrowDoors(view.narrowDoors);
     app.setSection(view.section ? view.sectionDepth : null);
+    applyRooms();
     viewer.setAO(view.ambientOcclusion && !view.section); // AO pass ignores clipping
   }
 
@@ -147,6 +149,62 @@ export function createUI(app) {
   fSection.add(view, 'showStairShafts').name('▸ Show stair shafts');
   fSection.add(view, 'section').name('section cut').onChange(applyView);
   fSection.add(view, 'sectionDepth', 0, 13, 0.1).name('cut depth from facade, m').onChange(applyView);
+
+  // ---------------- Rooms of the 4th floor ----------------
+  // per-room state survives rebuilds (rooms keep their index)
+  const roomList = () => app.building().rooms || [];
+  const defaultRoomState = (r) => ({ fill: false, color: r.color, label: r.named, route: false });
+  let roomState = roomList().map(defaultRoomState);
+  function applyRooms() {
+    const b = app.building();
+    roomList().forEach((r, i) => {
+      roomState[i] ??= defaultRoomState(r);
+      b.setRoom(i, roomState[i]);
+    });
+  }
+  const fRooms = gui.addFolder('Rooms (4th floor)');
+  const wallsCtl = {
+    hideWalls: () => { view.interiorWalls = false; view.stairWalls = false; view.markup = true; applyView(); refreshControls(); },
+    showWalls: () => { view.interiorWalls = true; view.stairWalls = true; applyView(); refreshControls(); },
+  };
+  fRooms.add(wallsCtl, 'hideWalls').name('▸ Hide all walls (keep markup)');
+  fRooms.add(wallsCtl, 'showWalls').name('▸ Show all walls');
+  fRooms.add(view, 'markup').name('plan markup on the floor').onChange(applyView);
+
+  const roomOptions = Object.fromEntries(roomList().map((r) => [r.displayName, r.index]));
+  const sel = { room: 0, fill: false, color: '#8fb8de', label: true, route: false, nearest: '' };
+  const syncSel = () => {
+    const r = roomList()[sel.room];
+    const st = roomState[sel.room];
+    Object.assign(sel, { fill: st.fill, color: st.color, label: st.label, route: st.route });
+    sel.nearest = r?.length != null ? `${r.stairName} · ${r.length.toFixed(1)} m` : 'no route';
+    for (const c of fRooms.controllersRecursive()) c.updateDisplay();
+  };
+  const editSel = (key) => (v) => { roomState[sel.room][key] = v; applyRooms(); };
+  fRooms.add(sel, 'room', roomOptions).name('room').onChange(syncSel);
+  fRooms.add(sel, 'fill').name('colour the floor').onChange(editSel('fill'));
+  fRooms.addColor(sel, 'color').name('colour').onChange((v) => { roomState[sel.room].color = v; roomState[sel.room].fill = true; sel.fill = true; applyRooms(); syncSel(); });
+  fRooms.add(sel, 'label').name('show name').onChange(editSel('label'));
+  fRooms.add(sel, 'route').name('arrow to nearest stairs').onChange(editSel('route'));
+  fRooms.add(sel, 'nearest').name('nearest stairs').disable();
+  const roomsCtl = {
+    only: () => { roomState.forEach((st, i) => { st.label = i === sel.room; st.route = i === sel.room; }); applyRooms(); syncSel(); },
+    allRoutes: () => { roomState.forEach((st) => { st.route = true; }); applyRooms(); syncSel(); },
+    noRoutes: () => { roomState.forEach((st) => { st.route = false; }); applyRooms(); syncSel(); },
+    allNames: () => { roomState.forEach((st) => { st.label = true; }); applyRooms(); syncSel(); },
+    noNames: () => { roomState.forEach((st) => { st.label = false; }); applyRooms(); syncSel(); },
+    clearColours: () => { roomState = roomList().map((r, i) => ({ ...roomState[i], fill: false, color: r.color })); applyRooms(); syncSel(); },
+  };
+  fRooms.add(roomsCtl, 'only').name('Only this room (name + arrow)');
+  fRooms.add(roomsCtl, 'allRoutes').name('Arrows from every room');
+  fRooms.add(roomsCtl, 'noRoutes').name('Hide all arrows');
+  fRooms.add(roomsCtl, 'allNames').name('Show all names');
+  fRooms.add(roomsCtl, 'noNames').name('Hide all names');
+  fRooms.add(roomsCtl, 'clearColours').name('Clear room colours');
+  syncSel();
+
+  // keep the panel short: less used sections start collapsed
+  for (const f of [fCam, fView, fFront, fSection, fStairs]) f.close();
 
   gui.add({ reset: () => resetDisplay() }, 'reset').name('↺ Default display, walls & interior');
 
@@ -198,6 +256,8 @@ export function createUI(app) {
   /** Display + walls & interior toggles → defaults. */
   function resetDisplay() {
     Object.assign(view, VIEW_DEFAULTS);
+    roomState = roomList().map(defaultRoomState);
+    syncSel();
     applyView();
     refreshControls();
   }

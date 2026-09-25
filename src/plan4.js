@@ -65,7 +65,7 @@ export const PLAN_WALLS = [
   [1500, 465, 1500, 567, 'mid'],
   [1550, 465, 1550, 567, 'mid'],
   [1597, 465, 1597, 545, 'thin'],
-  [1550, 545, 1655, 545, 'thin', [D(1612, 840)]],
+  [1550, 545, 1655, 545, 'thin', [D(1573, 840), D(1612, 840)]], // left office door assumed (not legible on the drawing)
   [1550, 567, 1655, 567, 'thin', [D(1580, 900)]],
   [1655, 465, 1655, 570, 'thick'],
   [1648, 570, 1648, 612, 'mid', [DD(591, 1200)]],
@@ -81,7 +81,7 @@ export const PLAN_WALLS = [
   ]],
   [420, 665, 515, 665, 'thin', [D(440, 840), D(492, 840)]],
   [462, 665, 462, 765, 'thin'],
-  [515, 575, 515, 765, 'mid'],
+  [515, 575, 515, 765, 'mid', [D(612, 900, { open: true })]], // assumed opening: links the west rooms to the common zone
   [567, 640, 567, 765, 'mid', null, 'stair'],
   [615, 640, 615, 765, 'mid', null, 'stair'],
   [660, 640, 660, 765, 'mid'],
@@ -97,19 +97,56 @@ export const PLAN_WALLS = [
   [1548, 660, 1548, 765, 'thin', [D(680, 600)]],
 ];
 
-/** Room labels: [x, y, text, vertical?] – vertical where the drawing writes them sideways. */
-export const PLAN_LABELS = [
-  [850, 530, 'Аудиторія'], [845, 705, 'Аудиторія'], [1203, 540, 'Аудиторія'],
-  [1150, 705, 'Аудиторія'], [1400, 705, 'Аудиторія'], [1705, 540, 'Аудиторія'],
-  [1105, 540, 'Офіс', true], [1278, 555, 'Офіс', true], [1328, 540, 'Офіс', true],
-  [1377, 535, 'Офіс', true], [1573, 505, 'Офіс', true], [1625, 505, 'Офіс', true],
-  [978, 705, 'Офіс', true], [1030, 705, 'Офіс', true], [1277, 705, 'Офіс', true],
-  [1327, 705, 'Офіс', true],
-  [1426, 482, 'WC'], [1475, 482, 'WC'],
-  [1525, 520, 'Тех. прим.', true], [1525, 710, 'Тех. прим.', true],
-  [1510, 603, 'Рецепція'], [1602, 700, 'Зона кафе', true],
-  [600, 608, 'Спільна зона\nKMBS + журналісти'],
-  [591, 705, 'Сходи', true], [1474, 705, 'Сходи', true],
+/**
+ * Rooms of the 4th floor: [name, x0, y0, x1, y1, options].
+ * Options: label: [x, y] (defaults to the centre), vertical: text written sideways,
+ * named: false for rooms the drawing leaves unnamed (their names start hidden).
+ */
+export const PLAN_ROOMS = [
+  // north side
+  ['Аудиторія', 755, 465, 1052, 590, { label: [850, 530] }],
+  ['Офіс', 1052, 465, 1155, 605, { vertical: true }],
+  ['Аудиторія', 1155, 465, 1252, 605, { label: [1203, 540] }],
+  ['Офіс', 1252, 515, 1302, 605, { vertical: true }],
+  ['Офіс', 1302, 465, 1352, 605, { vertical: true }],
+  ['Офіс', 1352, 465, 1402, 605, { vertical: true }],
+  ['WC', 1402, 465, 1450, 567, { label: [1426, 482] }],
+  ['WC', 1450, 465, 1500, 567, { label: [1475, 482] }],
+  ['Тех. прим.', 1500, 465, 1550, 567, { vertical: true }],
+  ['Офіс', 1550, 465, 1597, 545, { vertical: true }],
+  ['Офіс', 1597, 465, 1655, 545, { vertical: true }],
+  ['Аудиторія', 1655, 465, 1750, 612, { label: [1705, 540] }],
+  // south side
+  ['Аудиторія', 757, 640, 953, 765],
+  ['Офіс', 953, 640, 1003, 765, { vertical: true }],
+  ['Офіс', 1003, 640, 1057, 765, { vertical: true }],
+  ['Аудиторія', 1057, 640, 1252, 765],
+  ['Офіс', 1252, 640, 1302, 765, { vertical: true }],
+  ['Офіс', 1302, 640, 1352, 765, { vertical: true }],
+  ['Аудиторія', 1352, 640, 1449, 765],
+  ['Тех. прим.', 1500, 640, 1548, 765, { vertical: true }],
+  // shared zones
+  ['Рецепція', 1402, 567, 1648, 640, { label: [1510, 603] }],
+  ['Зона кафе', 1548, 640, 1648, 765, { vertical: true }],
+  ['Спільна зона\nKMBS + журналісти', 517, 575, 748, 640, { label: [600, 608] }],
+  // west block (unnamed on the drawing)
+  ['Приміщення', 420, 465, 517, 575, { named: false }],
+  ['Приміщення', 420, 575, 515, 665, { named: false }],
+  ['Приміщення', 420, 665, 462, 765, { named: false, vertical: true }],
+  ['Приміщення', 462, 665, 515, 765, { named: false, vertical: true }],
+  ['Приміщення', 515, 640, 567, 765, { named: false, vertical: true }],
+  ['Приміщення', 615, 640, 660, 765, { named: false, vertical: true }],
+  ['Приміщення', 660, 640, 757, 765, { named: false }],
+  ['Приміщення', 660, 465, 755, 607, { named: false }],
+  ['Приміщення', 612, 465, 660, 575, { named: false, vertical: true }],
+  ['WC', 517, 465, 612, 528, { named: false }],
+];
+
+/** Stair labels and the points the evacuation routes lead to (inside each stair core). */
+export const PLAN_STAIR_LABELS = [[591, 705], [1474, 705]];
+export const PLAN_STAIR_TARGETS = [
+  { x: 591, y: 668, name: 'ліві сходи' },
+  { x: 1474, y: 668, name: 'праві сходи' },
 ];
 
 /** Maps drawing pixels to building-local metres (X along length, Z toward the main facade). */
@@ -123,6 +160,12 @@ export function planToWorld(px, py, W, D, t) {
   if (py <= B.y0 + 12) z = -D / 2 + t;
   if (py >= B.y1 - 12) z = D / 2 - t;
   return [x, z];
+}
+
+/** Same mapping without snapping to the facade (rooms, labels, routes). */
+export function planToWorldRaw(px, py, W, D) {
+  const B = PLAN_BOUNDS;
+  return [((px - B.x0) / (B.x1 - B.x0)) * W - W / 2, ((py - B.y0) / (B.y1 - B.y0)) * D - D / 2];
 }
 
 export function planScale(W, D) {

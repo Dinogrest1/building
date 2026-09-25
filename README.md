@@ -26,6 +26,7 @@ npm run build    # production build in dist/
   * **Walls & interior**: per-facade walls, front wall of the stair shafts (hides only the strips with the small windows), 4th-floor walls & doors, stair-core walls, slabs, room names, doors < 900 mm, stairs (highlight colour, transparent flights)
   * **Front additions** (independent of the facade toggles): entrance porch & steps, canopies, technical annex, basement stair under a lean-to canopy, route arrows on the ground, entrance/utility doors, roller shutters & grilles
   * **Section (stair shafts)**: vertical section cut that removes everything in front of it except the stairs, so both shafts read through all floors; adjustable cut depth. Also the **Stair shafts** button in the bottom bar
+  * **Rooms (4th floor)**: hide all walls and doors while keeping the plan markup on the floor; per room (drop-down): colour the floor, show/hide the name, arrow to the nearest stairs (with the stair and route length); *Only this room*, arrows from every room, show/hide all names, clear colours. Routes follow corridors and doorways (grid path-finding on the traced plan, `src/routes.js`)
   * **Colours**: facade, side, plinth, fins, glass, frames, roof, HVAC and metal (applied live)
 
 `window.app` is exposed in the browser console for inspection (`app.building().layout`, `app.rebuild()` …).

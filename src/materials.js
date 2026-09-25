@@ -121,6 +121,8 @@ export function createMaterials(colors) {
     stair: new THREE.MeshStandardMaterial({ color: STAIR_COLOR, roughness: 0.85 }),
     stairNosing: new THREE.MeshStandardMaterial({ color: '#8b8e91', roughness: 0.5, metalness: 0.5 }),
     steel: new THREE.MeshStandardMaterial({ color: '#d3d8dc', roughness: 0.22, metalness: 0.9 }),
+    markup: new THREE.MeshStandardMaterial({ color: '#45484c', roughness: 0.8 }),
+    route: new THREE.MeshStandardMaterial({ color: ARROWS.color, roughness: 0.6, emissive: '#3a0703', side: THREE.DoubleSide }),
     // front additions
     canopySheet: new THREE.MeshStandardMaterial({ color: BASEMENT.canopyColor, roughness: 0.45, metalness: 0.5, side: THREE.DoubleSide }),
     canopyRib: new THREE.MeshStandardMaterial({ color: BASEMENT.ribColor, roughness: 0.5, metalness: 0.5 }),

@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { INTERIOR, SLAB } from './config.js';
-import { PLAN_WALLS, PLAN_LABELS, planToWorld } from './plan4.js';
+import { PLAN_WALLS, PLAN_ROOMS, PLAN_STAIR_LABELS, PLAN_STAIR_TARGETS, planToWorld, planToWorldRaw } from './plan4.js';
+import { computeRoutes } from './routes.js';
+import { createFloorArrow } from './arrows.js';
 import { subtractIntervals } from './utils.js';
 
 /** Storey index (0-based) that carries the traced plan. */
@@ -98,6 +100,8 @@ export function createPlanFloor(placer, p, lv, mats) {
 
     for (const [s0, s1] of subtractIntervals(a, b, openings.map((o) => [o.u0, o.u1]))) {
       put(category, mat, s0, s1, y0, top);
+      // plan markup: the wall footprint drawn on the floor, stays when walls are hidden
+      put('markup', mats.markup, s0, s1, y0 + 0.003, y0 + 0.008, Math.max(th, 0.06));
     }
 
     for (const o of openings) {
@@ -129,18 +133,84 @@ export function createPlanFloor(placer, p, lv, mats) {
     }
   }
 
-  createRoomLabels(scoped, y0, W, D, t);
+  // outline of the outer walls in the markup
+  const m = mats.markup;
+  const my0 = y0 + 0.003;
+  const my1 = y0 + 0.008;
+  scoped.boxMinMax('markup', m, -W / 2, my0, D / 2 - t, W / 2, my1, D / 2 - t + 0.12);
+  scoped.boxMinMax('markup', m, -W / 2, my0, -D / 2 + t - 0.12, W / 2, my1, -D / 2 + t);
+  scoped.boxMinMax('markup', m, -W / 2 + t - 0.12, my0, -D / 2, -W / 2 + t, my1, D / 2);
+  scoped.boxMinMax('markup', m, W / 2 - t, my0, -D / 2, W / 2 - t + 0.12, my1, D / 2);
+
+  return createRooms(scoped, y0, W, D, mats);
 }
 
-/** Room names as flat text on the floor (readable from above). */
-function createRoomLabels(placer, y0, W, D, t) {
-  for (const [px, py, text, vertical] of PLAN_LABELS) {
-    const [x, z] = planToWorld(px, py, W, D, t);
-    const mesh = makeLabel(text);
-    mesh.position.set(x, y0 + 0.02, z);
-    mesh.rotation.set(-Math.PI / 2, 0, vertical ? Math.PI / 2 : 0);
-    placer.mesh('labels', mesh);
-  }
+/** Default floor colours for rooms (soft, distinguishable). */
+const ROOM_PALETTE = ['#8fb8de', '#f2b279', '#9ccc9c', '#e79aa6', '#c9b3e0', '#f3d77c', '#86cfc7', '#d8b48f'];
+
+/**
+ * Rooms of the traced plan: floor fill (hidden until coloured), name label and a
+ * route arrow to the nearest stair. Each piece has its own scope
+ * (fill-i / label-i / route-i) so every room can be controlled on its own.
+ */
+function createRooms(placer, y0, W, D, mats) {
+  const { rooms: routes } = computeRoutes();
+  const counts = {};
+  const totals = {};
+  for (const [name] of PLAN_ROOMS) totals[name] = (totals[name] || 0) + 1;
+
+  const rooms = PLAN_ROOMS.map(([name, px0, py0, px1, py1, opt = {}], i) => {
+    const [x0, z0] = planToWorldRaw(px0, py0, W, D);
+    const [x1, z1] = planToWorldRaw(px1, py1, W, D);
+    counts[name] = (counts[name] || 0) + 1;
+    const plain = name.replace('\n', ' ');
+    const displayName = totals[name] > 1 ? `${plain} ${counts[name]}` : plain;
+
+    // floor fill
+    const color = ROOM_PALETTE[i % ROOM_PALETTE.length];
+    const mat = new THREE.MeshStandardMaterial({
+      color, roughness: 0.9, transparent: true, opacity: 0.8,
+      polygonOffset: true, polygonOffsetFactor: -2, depthWrite: false,
+    });
+    mat.userData.disposable = true;
+    const fill = new THREE.Mesh(new THREE.PlaneGeometry(Math.abs(x1 - x0) - 0.06, Math.abs(z1 - z0) - 0.06), mat);
+    fill.rotation.x = -Math.PI / 2;
+    fill.position.set((x0 + x1) / 2, y0 + 0.002, (z0 + z1) / 2);
+    fill.receiveShadow = true;
+    fill.name = `fill-${displayName}`;
+    placer.withScope(`fill-${i}`).mesh('roomFills', fill);
+
+    // name
+    const [lx, lz] = opt.label ? planToWorldRaw(opt.label[0], opt.label[1], W, D) : [(x0 + x1) / 2, (z0 + z1) / 2];
+    const label = makeLabel(name);
+    label.position.set(lx, y0 + 0.02, lz);
+    label.rotation.set(-Math.PI / 2, 0, opt.vertical ? Math.PI / 2 : 0);
+    placer.withScope(`label-${i}`).mesh('labels', label);
+
+    // route to the nearest stair
+    const r = routes[i];
+    let length = null;
+    if (r?.path) {
+      const pts = r.path.map(([px, py]) => planToWorldRaw(px, py, W, D));
+      length = pts.slice(1).reduce((sum, q, k) => sum + Math.hypot(q[0] - pts[k][0], q[1] - pts[k][1]), 0);
+      createFloorArrow(placer.withScope(`route-${i}`), 'routes', pts, y0 + 0.03, mats.route,
+        { width: 0.22, headLength: 0.6, headWidth: 0.6 });
+    }
+    return {
+      index: i, name: plain, displayName, named: opt.named !== false, color, material: mat,
+      stair: r?.stair ?? -1, stairName: PLAN_STAIR_TARGETS[r?.stair]?.name ?? '—', length,
+    };
+  });
+
+  // stair labels
+  PLAN_STAIR_LABELS.forEach(([px, py]) => {
+    const [x, z] = planToWorldRaw(px, py, W, D);
+    const label = makeLabel('Сходи');
+    label.position.set(x, y0 + 0.02, z);
+    label.rotation.set(-Math.PI / 2, 0, Math.PI / 2);
+    placer.withScope('label-stairs').mesh('labels', label);
+  });
+  return rooms;
 }
 
 function makeLabel(text) {

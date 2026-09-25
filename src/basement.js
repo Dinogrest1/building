@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { BASEMENT, ARROWS } from './config.js';
+import { BASEMENT } from './config.js';
+import { createFloorArrow } from './arrows.js';
 
 /**
  * Basement entrance in front of the main facade (facade-local coordinates:
@@ -84,43 +85,7 @@ export function basementCutout(f, frame) {
   };
 }
 
-/**
- * Painted route arrows on the ground: a polyline of flat strips (facade-local
- * [u, w] points) ending in a triangular head.
- */
+/** Painted route arrow on the ground in front of the facade. */
 export function createRouteArrow(placer, points, mats) {
-  const A = ARROWS;
-  const y = 0.012;
-  const hw = A.width / 2;
-  for (let i = 0; i < points.length - 1; i++) {
-    const [u0, w0] = points[i];
-    let [u1, w1] = points[i + 1];
-    const last = i === points.length - 2;
-    const du = Math.sign(u1 - u0);
-    const dw = Math.sign(w1 - w0);
-    if (last) { u1 -= du * A.headLength; w1 -= dw * A.headLength; } // leave room for the head
-    // extend each strip by half a width so corners close
-    placer.boxMinMax('arrows', mats.arrow,
-      Math.min(u0, u1) - hw, 0.004, Math.min(w0, w1) - hw,
-      Math.max(u0, u1) + hw, y, Math.max(w0, w1) + hw, { castShadow: false });
-  }
-  // head
-  const [ua, wa] = points[points.length - 2];
-  const [ub, wb] = points[points.length - 1];
-  const dir = new THREE.Vector2(ub - ua, wb - wa).normalize();
-  const n = new THREE.Vector2(-dir.y, dir.x);
-  const base = new THREE.Vector2(ub, wb).addScaledVector(dir, -A.headLength);
-  const tri = new THREE.Shape([
-    new THREE.Vector2(ub, wb),
-    base.clone().addScaledVector(n, A.headWidth / 2),
-    base.clone().addScaledVector(n, -A.headWidth / 2),
-  ]);
-  const geo = new THREE.ShapeGeometry(tri);
-  // shape (u, w) → local (x = u, y = 0, z = w)
-  geo.rotateX(Math.PI / 2);
-  const head = new THREE.Mesh(geo, mats.arrow);
-  head.position.y = y;
-  head.receiveShadow = true;
-  head.name = 'arrow-head';
-  placer.mesh('arrows', head);
+  createFloorArrow(placer, 'arrows', points, 0.01, mats.arrow);
 }
