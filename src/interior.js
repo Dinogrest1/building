@@ -198,6 +198,7 @@ function createRooms(placer, y0, W, D, mats) {
     }
     return {
       index: i, name: plain, displayName, named: opt.named !== false, color, material: mat,
+      bounds: { x0: Math.min(x0, x1), x1: Math.max(x0, x1), z0: Math.min(z0, z1), z1: Math.max(z0, z1) },
       stair: r?.stair ?? -1, stairName: PLAN_STAIR_TARGETS[r?.stair]?.name ?? '—', length,
     };
   });

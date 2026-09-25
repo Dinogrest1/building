@@ -175,10 +175,35 @@ export function computeRoutes() {
       }
     }
     pts.push(cells[cells.length - 1]);
-    const path = pts.map((i) => g.toPx(i % cols, (i / cols) | 0));
+    const full = pts.map((i) => g.toPx(i % cols, (i / cols) | 0));
+    const path = fromDoorway(full, x0, y0, x1, y1);
     return { index, name, stair: source[start], path, opt };
   });
 
   cache = { rooms };
   return cache;
+}
+
+/**
+ * Starts the route where it leaves the room – i.e. in its doorway – instead of
+ * the room centre. Routes that never leave the room (stairs open onto it) stay whole.
+ */
+function fromDoorway(path, x0, y0, x1, y1) {
+  const inside = ([x, y]) => x > x0 && x < x1 && y > y0 && y < y1;
+  for (let k = 0; k < path.length - 1; k++) {
+    const a = path[k];
+    const b = path[k + 1];
+    if (!inside(a) || inside(b)) continue;
+    // first crossing of the room boundary on a → b
+    let t = 1;
+    const dx = b[0] - a[0];
+    const dy = b[1] - a[1];
+    if (dx > 0) t = Math.min(t, (x1 - a[0]) / dx);
+    if (dx < 0) t = Math.min(t, (x0 - a[0]) / dx);
+    if (dy > 0) t = Math.min(t, (y1 - a[1]) / dy);
+    if (dy < 0) t = Math.min(t, (y0 - a[1]) / dy);
+    const door = [a[0] + dx * t, a[1] + dy * t];
+    return [door, ...path.slice(k + 1)];
+  }
+  return path;
 }

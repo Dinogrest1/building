@@ -3,7 +3,7 @@ import { COPING, FRONT_ZONES } from './config.js';
 import { computeLayout } from './layout.js';
 import { buildFacade } from './facade.js';
 import { createRoof } from './roof.js';
-import { createFloorSlabs, createPlanFloor } from './interior.js';
+import { createFloorSlabs, createPlanFloor, planFloorIndex } from './interior.js';
 import { createStairs, stairWell } from './stairs.js';
 import { PLAN_STAIRS, planToWorld } from './plan4.js';
 import { basementCutout } from './basement.js';
@@ -80,7 +80,7 @@ export class Building extends THREE.Group {
     return g;
   }
 
-  /** Parapet coping – long sides run full length, short sides fit between. */
+  /** Parapet coping (scope '<facade>-parapet', hides with the roof) – long sides run full length, short sides fit between. */
   createStructure() {
     const p = this.params;
     const { parapetTop } = this.layout.levels;
@@ -92,10 +92,10 @@ export class Building extends THREE.Group {
     const y1 = parapetTop + COPING.height;
     const m = this.materials.coping;
     const P = this.placer;
-    P.withScope('front').boxMinMax('structure', m, -W / 2 - c, y0, D / 2 - t - c, W / 2 + c, y1, D / 2 + c);
-    P.withScope('back').boxMinMax('structure', m, -W / 2 - c, y0, -D / 2 - c, W / 2 + c, y1, -D / 2 + t + c);
-    P.withScope('right').boxMinMax('structure', m, W / 2 - t - c, y0, -D / 2 + t + c, W / 2 + c, y1, D / 2 - t - c);
-    P.withScope('left').boxMinMax('structure', m, -W / 2 - c, y0, -D / 2 + t + c, -W / 2 + t + c, y1, D / 2 - t - c);
+    P.withScope('front-parapet').boxMinMax('structure', m, -W / 2 - c, y0, D / 2 - t - c, W / 2 + c, y1, D / 2 + c);
+    P.withScope('back-parapet').boxMinMax('structure', m, -W / 2 - c, y0, -D / 2 - c, W / 2 + c, y1, -D / 2 + t + c);
+    P.withScope('right-parapet').boxMinMax('structure', m, W / 2 - t - c, y0, -D / 2 + t + c, W / 2 + c, y1, D / 2 - t - c);
+    P.withScope('left-parapet').boxMinMax('structure', m, -W / 2 - c, y0, -D / 2 + t + c, -W / 2 + t + c, y1, D / 2 - t - c);
   }
 
   /** Front, sides and back – each from the layout description (see layout.js). */
@@ -147,6 +147,45 @@ export class Building extends THREE.Group {
     for (const g of Object.values(this.parts)) {
       for (const child of g.children) if (child.name === scope) child.visible = visible;
     }
+  }
+
+  /** Room of the traced floor under a world point (−1 when none). */
+  roomAt(point) {
+    const fi = planFloorIndex(this.params);
+    const y0 = this.layout.levels.floor(fi);
+    if (!this.rooms || point.y < y0 - 0.35 || point.y > y0 + this.params.floorHeight) return -1;
+    let best = -1;
+    let bestArea = Infinity;
+    for (const r of this.rooms) {
+      const b = r.bounds;
+      if (point.x < b.x0 || point.x > b.x1 || point.z < b.z0 || point.z > b.z1) continue;
+      const area = (b.x1 - b.x0) * (b.z1 - b.z0);
+      if (area < bestArea) { bestArea = area; best = r.index; }
+    }
+    return best;
+  }
+
+  /** Orange outline around the selected room (−1 hides it). */
+  setSelectedRoom(i) {
+    if (!this.selection) {
+      const mat = new THREE.MeshBasicMaterial({ color: '#ff7a1a', toneMapped: false });
+      mat.userData.disposable = true;
+      this.selection = new THREE.Group();
+      this.selection.name = 'room-selection';
+      for (let k = 0; k < 4; k++) this.selection.add(new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1), mat));
+      this.add(this.selection);
+    }
+    const r = this.rooms?.[i];
+    this.selection.visible = Boolean(r);
+    if (!r) return;
+    const { x0, x1, z0, z1 } = r.bounds;
+    const y = this.layout.levels.floor(planFloorIndex(this.params)) + 0.04;
+    const w = 0.14;
+    const [top, bottom, left, right] = this.selection.children;
+    top.position.set((x0 + x1) / 2, y, z0); top.scale.set(x1 - x0 + w, 0.03, w);
+    bottom.position.set((x0 + x1) / 2, y, z1); bottom.scale.set(x1 - x0 + w, 0.03, w);
+    left.position.set(x0, y, (z0 + z1) / 2); left.scale.set(w, 0.03, z1 - z0 + w);
+    right.position.set(x1, y, (z0 + z1) / 2); right.scale.set(w, 0.03, z1 - z0 + w);
   }
 
   /** Per-room controls on the traced floor. */

@@ -42,6 +42,8 @@ export class Navigation {
     this.listeners = new Set();
     this.raycaster = new THREE.Raycaster();
     this.dragging = null;
+    this.pickListeners = new Set();
+    this.press = null;
 
     const dom = viewer.renderer.domElement;
     window.addEventListener('keydown', (e) => this.onKey(e, true));
@@ -56,6 +58,17 @@ export class Navigation {
   }
 
   onChange(fn) { this.listeners.add(fn); }
+
+  /** Single click (no drag) on the canvas → fn(hit) with the first visible surface hit. */
+  onPick(fn) { this.pickListeners.add(fn); }
+
+  pick(e) {
+    const v = this.viewer;
+    const rect = v.renderer.domElement.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(ndc, v.camera);
+    return this.raycaster.intersectObjects(v.scene.children, true).find((h) => isShown(h.object)) || null;
+  }
 
   emit() { for (const fn of this.listeners) fn(this.mode); }
 
@@ -123,6 +136,7 @@ export class Navigation {
 
   // ---------- walk mode: drag to look ----------
   onPointerDown(e) {
+    this.press = { x: e.clientX, y: e.clientY, t: performance.now(), button: e.button };
     if (this.mode !== 'walk') return;
     this.dragging = { id: e.pointerId, x: e.clientX, y: e.clientY };
     e.target.setPointerCapture?.(e.pointerId);
@@ -145,6 +159,13 @@ export class Navigation {
 
   onPointerUp(e) {
     if (this.dragging && this.dragging.id === e.pointerId) this.dragging = null;
+    const p = this.press;
+    this.press = null;
+    // a click is a short press that barely moved (drags rotate / look around)
+    if (!p || p.button !== 0 || !this.pickListeners.size) return;
+    if (Math.hypot(e.clientX - p.x, e.clientY - p.y) > 5 || performance.now() - p.t > 500) return;
+    const hit = this.pick(e);
+    for (const fn of this.pickListeners) fn(hit);
   }
 
   onWheel(e) {
@@ -158,10 +179,7 @@ export class Navigation {
   // ---------- orbit mode: double-click sets the pivot ----------
   onDoubleClick(e) {
     const v = this.viewer;
-    const rect = v.renderer.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
-    this.raycaster.setFromCamera(ndc, v.camera);
-    const hit = this.raycaster.intersectObjects(v.scene.children, true).find((h) => isShown(h.object));
+    const hit = this.pick(e);
     if (!hit) return;
     if (this.mode === 'walk') {
       // walk toward the clicked point, stopping short of it

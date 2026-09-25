@@ -93,6 +93,7 @@ export function createUI(app) {
     for (const f of FACADES) {
       b.setScopeVisible(f, view[FACADE_KEYS[f]]);
       b.setScopeVisible(`${f}-floor4`, view[FACADE_KEYS[f]] && view.floor4Facade);
+      b.setScopeVisible(`${f}-parapet`, view[FACADE_KEYS[f]] && view.roof); // parapet + coping go with the roof
     }
     b.setScopeVisible('front-stairs', view.wallFront && view.stairFront);
     b.setScopeVisible('front-stairs-floor4', view.wallFront && view.stairFront && view.floor4Facade);
@@ -161,8 +162,10 @@ export function createUI(app) {
   const roomList = () => app.building().rooms || [];
   const defaultRoomState = (r) => ({ fill: false, color: r.color, label: r.named, route: false });
   let roomState = roomList().map(defaultRoomState);
+  let selectedRoom = -1; // orange outline, set by clicking a room or picking it in the list
   function applyRooms() {
     const b = app.building();
+    b.setSelectedRoom(selectedRoom);
     roomList().forEach((r, i) => {
       roomState[i] ??= defaultRoomState(r);
       b.setRoom(i, roomState[i]);
@@ -188,7 +191,7 @@ export function createUI(app) {
     for (const c of fRooms.controllersRecursive()) c.updateDisplay();
   };
   const editSel = (key) => (v) => { roomState[sel.room][key] = v; applyRooms(); };
-  fRooms.add(sel, 'room', roomOptions).name('room').onChange(syncSel);
+  fRooms.add(sel, 'room', roomOptions).name('room').onChange((i) => { selectedRoom = i; app.building().setSelectedRoom(i); syncSel(); });
   fRooms.add(sel, 'fill').name('colour the floor').onChange(editSel('fill'));
   fRooms.addColor(sel, 'color').name('colour').onChange((v) => { roomState[sel.room].color = v; roomState[sel.room].fill = true; sel.fill = true; applyRooms(); syncSel(); });
   fRooms.add(sel, 'label').name('show name').onChange(editSel('label'));
@@ -209,6 +212,20 @@ export function createUI(app) {
   fRooms.add(roomsCtl, 'noNames').name('Hide all names');
   fRooms.add(roomsCtl, 'clearColours').name('Clear room colours');
   syncSel();
+
+  // click a room on the 4th floor to select it here
+  nav.onPick((hit) => {
+    if (!hit) return;
+    const i = app.building().roomAt(hit.point);
+    if (i < 0) return;
+    sel.room = i;
+    selectedRoom = i;
+    app.building().setSelectedRoom(i);
+    syncSel();
+    gui.open();
+    fRooms.open();
+    fRooms.domElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+  });
 
   // keep the panel short: less used sections start collapsed
   for (const f of [fCam, fView, fFront, fSection, fStairs]) f.close();
@@ -264,6 +281,7 @@ export function createUI(app) {
   function resetDisplay() {
     Object.assign(view, VIEW_DEFAULTS);
     roomState = roomList().map(defaultRoomState);
+    selectedRoom = -1;
     syncSel();
     applyView();
     refreshControls();

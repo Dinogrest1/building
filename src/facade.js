@@ -79,7 +79,9 @@ export function buildFacade(rootPlacer, def, ctx) {
     for (const [u0, u1] of intervals) {
       const own = holes.filter((o) => !inStrip(o) && within(o, u0, u1, r));
       own.forEach((o) => assigned.add(o));
-      placerFor(false, r.band).mesh('structure', wallPanel(u0, r.v0, u1, r.v1, own, t, mat, `skin-${def.name}`));
+      // the parapet zone belongs to the roof: it hides together with it
+      const pl = r.full ? placer.withScope(`${def.name}-parapet`) : placerFor(false, r.band);
+      pl.mesh('structure', wallPanel(u0, r.v0, u1, r.v1, own, t, mat, `skin-${def.name}`));
     }
     if (r.full) continue;
     strips.forEach(([u0, u1], i) => {
