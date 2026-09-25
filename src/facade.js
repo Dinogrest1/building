@@ -1,5 +1,6 @@
 import * as THREE from 'three';
-import { PLINTH } from './config.js';
+import { PLINTH, SLAB } from './config.js';
+import { planFloorIndex } from './interior.js';
 import { subtractIntervals } from './utils.js';
 import { createWindowGroup, createSquareWindow, createVerticalFin } from './windows.js';
 import { createHVACUnit } from './hvac.js';
@@ -51,18 +52,44 @@ export function buildFacade(rootPlacer, def, ctx) {
   const strips = def.stairStrips || [];
   const holes = def.openings.filter((o) => HOLE_KINDS.has(o.kind));
   const inStrip = (o) => o.strip != null && strips[o.strip];
-  const stripTop = lv.roofLevel;
-  const stripBottom = -BELOW_GRADE + 0.1;
-
-  // ---- wall skin with openings (ExtrudeGeometry keeps real reveals/depth) ----
   const L = def.length;
-  const skinHoles = holes.filter((o) => !inStrip(o))
-    .concat(strips.map(([a, b]) => ({ u0: a, v0: stripBottom, w: b - a, h: stripTop - stripBottom })));
-  placer.mesh('structure', wallPanel(-L / 2, -BELOW_GRADE, L / 2, lv.parapetTop, skinHoles, t, mats[def.material], `skin-${def.name}`));
-  strips.forEach(([a, b], i) => {
-    const own = holes.filter((o) => o.strip === i);
-    stripPlacer.mesh('structure', wallPanel(a, stripBottom, b, stripTop, own, t, mats[def.material], `stair-wall-${def.name}-${i}`));
-  });
+  const mat = mats[def.material];
+
+  // Horizontal band of the planned (4th) floor: wall, windows, fins and AC units there
+  // get their own scope ('<facade>-floor4', or '<facade>-stairs-floor4' in a stair strip).
+  const fb = planFloorIndex(p);
+  const bandBottom = lv.floor(fb);
+  const bandTop = (fb + 1 < p.floorCount ? lv.floor(fb + 1) : lv.roofLevel) - SLAB.thickness;
+  const bandPlacer = placer.withScope(`${def.name}-floor4`);
+  const stripBandPlacer = placer.withScope(`${def.name}-stairs-floor4`);
+  const inBand = (v0, v1) => v0 >= bandBottom - 1e-6 && v1 <= bandTop + 1e-6;
+  const placerFor = (strip, band) => (strip ? (band ? stripBandPlacer : stripPlacer) : (band ? bandPlacer : placer));
+
+  // ---- wall skin: panels between the stair strips, split into below / band / above ----
+  const rows = [
+    { v0: -BELOW_GRADE, v1: bandBottom, band: false },
+    { v0: bandBottom, v1: bandTop, band: true },
+    { v0: bandTop, v1: lv.parapetTop, band: false, full: true }, // parapet zone spans the strips
+  ];
+  const within = (o, u0, u1, r) => o.u0 >= u0 && o.u0 + o.w <= u1 && o.v0 >= r.v0 && o.v0 + o.h <= r.v1;
+  const plainIntervals = subtractIntervals(-L / 2, L / 2, strips);
+  const assigned = new Set();
+  for (const r of rows) {
+    const intervals = r.full ? [[-L / 2, L / 2]] : plainIntervals;
+    for (const [u0, u1] of intervals) {
+      const own = holes.filter((o) => !inStrip(o) && within(o, u0, u1, r));
+      own.forEach((o) => assigned.add(o));
+      placerFor(false, r.band).mesh('structure', wallPanel(u0, r.v0, u1, r.v1, own, t, mat, `skin-${def.name}`));
+    }
+    if (r.full) continue;
+    strips.forEach(([u0, u1], i) => {
+      const own = holes.filter((o) => o.strip === i && within(o, u0, u1, r));
+      own.forEach((o) => assigned.add(o));
+      placerFor(true, r.band).mesh('structure', wallPanel(u0, r.v0, u1, r.v1, own, t, mat, `stair-wall-${def.name}-${i}`));
+    });
+  }
+  const lost = holes.filter((o) => !assigned.has(o));
+  if (lost.length) console.warn(`${def.name}: ${lost.length} opening(s) straddle a wall-panel boundary`, lost);
 
   // ---- plinth / foundation strip, interrupted by openings at grade and by the stair strips ----
   const cutsFor = (list) => list
@@ -77,7 +104,7 @@ export function buildFacade(rootPlacer, def, ctx) {
 
   // ---- contents of each opening ----
   for (const o of def.openings) {
-    const pl = inStrip(o) ? stripPlacer : placer;
+    const pl = placerFor(inStrip(o), inBand(o.v0, o.v0 + o.h));
     switch (o.kind) {
       case 'window': createWindowGroup(pl, o, mats, rng); break;
       case 'square': createSquareWindow(pl, o, mats, rng); break;
@@ -89,10 +116,10 @@ export function buildFacade(rootPlacer, def, ctx) {
     }
   }
 
-  for (const fin of def.fins) createVerticalFin(placer, fin, mats);
+  for (const fin of def.fins) createVerticalFin(fin.floor === fb ? bandPlacer : placer, fin, mats);
   for (const pl of def.pilasters) createPilaster(placer, pl, mats);
   for (const b of def.bands) createBand(placer, b, mats);
-  for (const unit of def.hvac) createHVACUnit(placer, unit, mats);
+  for (const unit of def.hvac) createHVACUnit(unit.floor === fb ? bandPlacer : placer, unit, mats);
   for (const f of def.features) {
     if (f.type === 'enclosure') createEnclosure(placer, f.u, mats);
     if (f.type === 'basement') createBasementEntrance(placer, f, mats);

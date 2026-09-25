@@ -83,7 +83,7 @@ function addWindowZone(facade, p, lv, zoneKey, groups, floors, skip = () => fals
       const active = fin.groups.some((gi) => !skip(f, gi));
       if (!active) continue;
       facade.fins.push({
-        u: fin.u,
+        u: fin.u, floor: f,
         v0: winV0(f) - FIN.overhang,
         h: p.windowHeight + 2 * FIN.overhang,
       });
@@ -150,7 +150,7 @@ function assignHVAC(facade, p, rng, densityScale = 1) {
     const h = HVAC.height * scale;
     const vc = o.v0 - HVAC.belowSill - h / 2 - rng() * 0.08;
     for (let i = 0; i < count; i++) {
-      facade.hvac.push({ u: uc - span / 2 + uw / 2 + i * (uw + 0.06), v: vc, w: uw, h, d: HVAC.depth * scale });
+      facade.hvac.push({ u: uc - span / 2 + uw / 2 + i * (uw + 0.06), v: vc, w: uw, h, d: HVAC.depth * scale, floor: o.floor });
     }
   }
 }

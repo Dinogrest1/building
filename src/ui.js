@@ -36,6 +36,7 @@ export function createUI(app) {
     basement: true, arrows: true,
     stairFront: true, // facade strips in front of the stair shafts
     markup: true,     // plan lines on the 4th floor
+    floor4Facade: true, // exterior walls with windows of the 4th floor
     // section through the stair shafts
     section: false, sectionDepth: 4.2,
   };
@@ -89,8 +90,12 @@ export function createUI(app) {
   function applyView() {
     const b = app.building();
     for (const [k, layer] of Object.entries(LAYER_TOGGLES)) b.setLayerVisible(layer, view[k]);
-    for (const f of FACADES) b.setScopeVisible(f, view[FACADE_KEYS[f]]);
+    for (const f of FACADES) {
+      b.setScopeVisible(f, view[FACADE_KEYS[f]]);
+      b.setScopeVisible(`${f}-floor4`, view[FACADE_KEYS[f]] && view.floor4Facade);
+    }
     b.setScopeVisible('front-stairs', view.wallFront && view.stairFront);
+    b.setScopeVisible('front-stairs-floor4', view.wallFront && view.stairFront && view.floor4Facade);
     viewer.setShadows(view.shadows);
     viewer.setAO(view.ambientOcclusion);
     viewer.setSunIntensity(view.sunIntensity);
@@ -118,6 +123,7 @@ export function createUI(app) {
   fWalls.add(view, 'showFloor4').name('▸ Look into 4th floor');
   fWalls.add(view, 'wallFront').name('front facade').onChange(applyView);
   fWalls.add(view, 'stairFront').name('front wall of stair shafts').onChange(applyView);
+  fWalls.add(view, 'floor4Facade').name('4th floor exterior walls & windows').onChange(applyView);
   fWalls.add(view, 'wallBack').name('back facade').onChange(applyView);
   fWalls.add(view, 'wallLeft').name('left facade').onChange(applyView);
   fWalls.add(view, 'wallRight').name('right facade').onChange(applyView);
@@ -170,6 +176,7 @@ export function createUI(app) {
   fRooms.add(wallsCtl, 'hideWalls').name('▸ Hide all walls (keep markup)');
   fRooms.add(wallsCtl, 'showWalls').name('▸ Show all walls');
   fRooms.add(view, 'markup').name('plan markup on the floor').onChange(applyView);
+  fRooms.add(view, 'floor4Facade').name('exterior walls & windows').onChange(applyView);
 
   const roomOptions = Object.fromEntries(roomList().map((r) => [r.displayName, r.index]));
   const sel = { room: 0, fill: false, color: '#8fb8de', label: true, route: false, nearest: '' };
