@@ -1,0 +1,54 @@
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #f3f3f1;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #2a2c2f;
+}
+
+#app, #app canvas {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#hud {
+  position: fixed;
+  top: 14px;
+  left: 16px;
+  pointer-events: none;
+  user-select: none;
+}
+#hud .title { font-size: 15px; font-weight: 600; letter-spacing: 0.01em; }
+#hud .hint { font-size: 12px; opacity: 0.6; margin-top: 3px; }
+
+#presets {
+  position: fixed;
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  max-width: calc(100vw - 32px);
+}
+#presets button {
+  font: inherit;
+  font-size: 12px;
+  padding: 7px 12px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #2a2c2f;
+  cursor: pointer;
+  backdrop-filter: blur(4px);
+  transition: background 0.15s, border-color 0.15s;
+}
+#presets button:hover { background: #fff; border-color: rgba(0, 0, 0, 0.3); }
+#presets button.active { background: #2a2c2f; color: #fff; border-color: #2a2c2f; }
