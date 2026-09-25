@@ -35,6 +35,7 @@ export function createUI(app) {
   fView.add(view, 'wireframe').onChange((v) => app.setWireframe(v));
   fView.add(view, 'sunIntensity', 0, 5, 0.05).name('sun intensity').onChange((v) => viewer.setSunIntensity(v));
   fView.add(view, 'resetCamera').name('Reset camera');
+  fView.add({ reset: () => resetDisplay() }, 'reset').name('↺ Default display');
 
   // Parametric model – geometry is regenerated on change
   const fParams = gui.addFolder('Parameters (rebuild)');
@@ -57,26 +58,47 @@ export function createUI(app) {
   fParams.add(params, 'sillHeight', 0.5, 1.2, 0.05).name('sill height').onFinishChange(rebuild);
   fParams.add(params, 'hvacDensity', 0, 1, 0.01).name('HVAC density').onFinishChange(rebuild);
   fParams.add(params, 'seed', 1, 999, 1).name('random seed').onFinishChange(rebuild);
+  fParams.add({ reset: () => resetParams() }, 'reset').name('↺ Default parameters');
   fParams.close();
 
   const fColors = gui.addFolder('Colours');
   for (const key of Object.keys(params.colors)) {
     fColors.addColor(params.colors, key).onChange(() => app.applyColors());
   }
+  fColors.add({ reset: () => resetColors() }, 'reset').name('↺ Default colours');
   fColors.close();
 
-  /** Restores every parameter, colour, display toggle and the camera. */
-  function resetAll() {
+  const refreshControls = () => { for (const c of gui.controllersRecursive()) c.updateDisplay(); };
+
+  /** Building geometry parameters → defaults, one rebuild. */
+  function resetParams() {
     const { colors, ...rest } = structuredClone(DEFAULT_PARAMS);
     Object.assign(params, rest);
-    Object.assign(params.colors, colors); // keep the object the colour controllers are bound to
+    rebuild();
+    refreshControls();
+  }
+
+  function resetColors() {
+    Object.assign(params.colors, DEFAULT_PARAMS.colors); // keep the object the colour controllers are bound to
+    app.applyColors();
+    refreshControls();
+  }
+
+  function resetDisplay() {
     Object.assign(view, VIEW_DEFAULTS);
+    for (const l of ['roof', 'hvac', 'fins', 'windows']) app.building().setLayerVisible(l, view[l]);
     viewer.setShadows(view.shadows);
     viewer.setAO(view.ambientOcclusion);
     viewer.setSunIntensity(view.sunIntensity);
-    app.applyColors();
-    rebuild();
-    for (const c of gui.controllersRecursive()) c.updateDisplay();
+    app.setWireframe(view.wireframe);
+    refreshControls();
+  }
+
+  /** Restores every parameter, colour, display toggle and the camera. */
+  function resetAll() {
+    resetColors();
+    resetDisplay();
+    resetParams();
     view.resetCamera();
   }
 
