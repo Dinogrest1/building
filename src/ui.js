@@ -8,6 +8,7 @@ const LAYER_TOGGLES = {
   roof: 'roof', hvac: 'hvac', fins: 'fins', windows: 'windows',
   slabs: 'slabs', interiorWalls: 'interior', stairWalls: 'stairWalls', stairs: 'stairs', labels: 'labels',
   porch: 'porch', canopies: 'canopies', annex: 'annex', entranceDoors: 'entrance', service: 'service',
+  basement: 'basement', arrows: 'arrows',
 };
 const FACADE_KEYS = { front: 'wallFront', back: 'wallBack', left: 'wallLeft', right: 'wallRight' };
 
@@ -32,6 +33,8 @@ export function createUI(app) {
     narrowDoors: false,
     // additions in front of the main facade
     porch: true, canopies: true, annex: true, entranceDoors: true, service: true,
+    basement: true, arrows: true,
+    stairFront: true, // facade strips in front of the stair shafts
     // section through the stair shafts
     section: false, sectionDepth: 4.2,
   };
@@ -86,6 +89,7 @@ export function createUI(app) {
     const b = app.building();
     for (const [k, layer] of Object.entries(LAYER_TOGGLES)) b.setLayerVisible(layer, view[k]);
     for (const f of FACADES) b.setScopeVisible(f, view[FACADE_KEYS[f]]);
+    b.setScopeVisible('front-stairs', view.wallFront && view.stairFront);
     viewer.setShadows(view.shadows);
     viewer.setAO(view.ambientOcclusion);
     viewer.setSunIntensity(view.sunIntensity);
@@ -111,6 +115,7 @@ export function createUI(app) {
   const fWalls = gui.addFolder('Walls & interior');
   fWalls.add(view, 'showFloor4').name('▸ Look into 4th floor');
   fWalls.add(view, 'wallFront').name('front facade').onChange(applyView);
+  fWalls.add(view, 'stairFront').name('front wall of stair shafts').onChange(applyView);
   fWalls.add(view, 'wallBack').name('back facade').onChange(applyView);
   fWalls.add(view, 'wallLeft').name('left facade').onChange(applyView);
   fWalls.add(view, 'wallRight').name('right facade').onChange(applyView);
@@ -132,6 +137,8 @@ export function createUI(app) {
   fFront.add(view, 'porch').name('entrance porch & steps').onChange(applyView);
   fFront.add(view, 'canopies').name('canopies').onChange(applyView);
   fFront.add(view, 'annex').name('technical annex').onChange(applyView);
+  fFront.add(view, 'basement').name('basement stair (under canopy)').onChange(applyView);
+  fFront.add(view, 'arrows').name('route arrows').onChange(applyView);
   fFront.add(view, 'entranceDoors').name('entrance & utility doors').onChange(applyView);
   fFront.add(view, 'service').name('roller shutters & grilles').onChange(applyView);
 

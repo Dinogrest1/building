@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { FIN, FRONT_ZONES, SIDE_ZONES, SERVICE, SMALL_DOOR, ENTRANCE, WINDOW, HVAC } from './config.js';
+import { FIN, FRONT_ZONES, SIDE_ZONES, SERVICE, SMALL_DOOR, ENTRANCE, WINDOW, HVAC, BASEMENT, ARROWS } from './config.js';
 import { createRng } from './utils.js';
 
 /**
@@ -92,13 +92,13 @@ function addWindowZone(facade, p, lv, zoneKey, groups, floors, skip = () => fals
 }
 
 /** Vertical strip of small square stair-core windows (+ optional door at grade). */
-function addStairStrip(facade, p, lv, uCenter, withDoor) {
+function addStairStrip(facade, p, lv, uCenter, withDoor, strip = null) {
   const s = WINDOW.squareSize;
   const doorTop = SMALL_DOOR.height + 0.35;
   if (withDoor) {
     facade.openings.push({
       kind: 'smallDoor', u0: uCenter - SMALL_DOOR.width / 2, v0: 0,
-      w: SMALL_DOOR.width, h: SMALL_DOOR.height,
+      w: SMALL_DOOR.width, h: SMALL_DOOR.height, strip,
     });
   }
   for (let f = 0; f < p.floorCount; f++) {
@@ -106,7 +106,7 @@ function addStairStrip(facade, p, lv, uCenter, withDoor) {
       const vc = lv.floor(f) + (p.floorHeight * (k + 0.5)) / p.squaresPerFloor;
       if (withDoor && vc - s / 2 < doorTop) continue;
       if (vc + s / 2 > lv.roofLevel - 0.25) continue;
-      facade.openings.push({ kind: 'square', u0: uCenter - s / 2, v0: vc - s / 2, w: s, h: s, floor: f });
+      facade.openings.push({ kind: 'square', u0: uCenter - s / 2, v0: vc - s / 2, w: s, h: s, floor: f, strip });
     }
   }
 }
@@ -195,7 +195,7 @@ export function computeLayout(p) {
     [-W / 2 - 0.05, W / 2 + 0.05]);
 
   addWindowZone(front, p, lv, 'leftWing', layoutGroups(x.leftWing, leftW, Z.leftWing.panes, pw), floors);
-  addStairStrip(front, p, lv, x.leftStrip + stripW / 2, true);
+  addStairStrip(front, p, lv, x.leftStrip + stripW / 2, true, 0);
 
   const centralGroups = layoutGroups(x.central, centralWidth, centralPanes, pw);
   const entranceGroup = centralGroups[0];
@@ -203,7 +203,7 @@ export function computeLayout(p) {
   addWindowZone(front, p, lv, 'central', centralGroups, floors,
     (f, gi) => f === 0 && (gi === entranceGroup.index || gi === enclosureGroup.index));
 
-  addStairStrip(front, p, lv, x.rightStrip + stripW / 2, true);
+  addStairStrip(front, p, lv, x.rightStrip + stripW / 2, true, 1);
   addWindowZone(front, p, lv, 'rightWing', layoutGroups(x.rightWing, rightW, Z.rightWing.panes, pw), upper);
   addServiceRow(front, x.rightWing, rightW, 3, SERVICE.shutterWidth);
 
@@ -214,7 +214,32 @@ export function computeLayout(p) {
     w: ENTRANCE.doorWidth, h: ENTRANCE.doorHeight,
   });
   front.features.push({ type: 'entrance', u: eu });
-  front.features.push({ type: 'enclosure', u: enclosureGroup.u0 + enclosureGroup.w / 2 });
+  const enclosureU = enclosureGroup.u0 + enclosureGroup.w / 2;
+  front.features.push({ type: 'enclosure', u: enclosureU });
+  // front of the stair shafts: removable wall strips (see facade.js)
+  front.stairStrips = coreX.map((c) => [c - stripW / 2, c + stripW / 2]);
+
+  // basement entrance right of the porch stair: pit descending toward the porch
+  const B = BASEMENT;
+  const porchSteps = Math.ceil(p.groundFloorLevel / ENTRANCE.riserMax) - 1;
+  const porchEnd = eu + ENTRANCE.doorWidth / 2 + 0.35 + porchSteps * ENTRANCE.tread;
+  const bRisers = Math.ceil(B.depth / B.riserMax);
+  const bu0 = porchEnd + B.gapToPorch + B.wall;
+  const bu1 = bu0 + B.landing + (bRisers - 1) * B.tread;
+  const basement = { type: 'basement', u0: bu0, u1: bu1, risers: bRisers };
+  front.features.push(basement);
+  front.openings.push({
+    kind: 'basementDoor', u0: bu0 + (B.landing - B.doorWidth) / 2, v0: -B.depth,
+    w: B.doorWidth, h: B.doorHeight,
+  });
+
+  // route arrows (facade-local u, w): stair-core doors → basement canopy / technical annex
+  const A = ARROWS.offset;
+  const annexU0 = enclosureU - SERVICE.enclosure.width / 2;
+  front.arrows = [
+    [[coreX[0], 1.4], [coreX[0], A], [bu1 + 1.2, A], [bu1 + 1.2, B.width / 2], [bu1 + 0.15, B.width / 2]],
+    [[coreX[1], 1.4], [coreX[1], A], [annexU0 - 1.0, A], [annexU0 - 1.0, SERVICE.enclosure.depth / 2], [annexU0 - 0.15, SERVICE.enclosure.depth / 2]],
+  ];
 
   // ================= RIGHT SIDE (+X) =================
   const sideL = D - 2 * t;

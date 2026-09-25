@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { BASEMENT, ARROWS } from './config.js';
 
 export const STAIR_COLOR = '#c9c5bd';
 export const DOOR_FRAME_COLOR = '#6d7175';
@@ -120,6 +121,10 @@ export function createMaterials(colors) {
     stair: new THREE.MeshStandardMaterial({ color: STAIR_COLOR, roughness: 0.85 }),
     stairNosing: new THREE.MeshStandardMaterial({ color: '#8b8e91', roughness: 0.5, metalness: 0.5 }),
     steel: new THREE.MeshStandardMaterial({ color: '#d3d8dc', roughness: 0.22, metalness: 0.9 }),
+    // front additions
+    canopySheet: new THREE.MeshStandardMaterial({ color: BASEMENT.canopyColor, roughness: 0.45, metalness: 0.5, side: THREE.DoubleSide }),
+    canopyRib: new THREE.MeshStandardMaterial({ color: BASEMENT.ribColor, roughness: 0.5, metalness: 0.5 }),
+    arrow: new THREE.MeshStandardMaterial({ color: ARROWS.color, roughness: 0.6, emissive: '#3a0703', side: THREE.DoubleSide }),
     railGlass: new THREE.MeshPhysicalMaterial({
       color: '#a8d6d4', roughness: 0.05, metalness: 0, transparent: true, opacity: 0.35, depthWrite: false,
     }),
@@ -177,7 +182,8 @@ export function setSectionCut(materials, plane) {
     const had = m.clippingPlanes?.length > 0;
     m.clippingPlanes = plane ? [plane] : [];
     m.clipShadows = true;
-    m.side = plane && key !== 'glass' ? THREE.DoubleSide : THREE.FrontSide;
+    m.userData.baseSide ??= m.side; // restore each material's own side when the cut is removed
+    m.side = plane && key !== 'glass' ? THREE.DoubleSide : m.userData.baseSide;
     if (had !== Boolean(plane)) m.needsUpdate = true;
   }
 }

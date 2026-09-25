@@ -142,6 +142,35 @@ export const SERVICE = {
   enclosure: { width: 3.4, height: 1.9, depth: 1.3 },
 };
 
+/** Basement entrance next to the main porch: stair pit along the facade under a lean-to canopy. */
+export const BASEMENT = {
+  depth: 2.4,          // basement floor below grade
+  width: 1.3,          // pit width (out from the facade)
+  landing: 1.3,        // bottom landing in front of the basement door
+  riserMax: 0.17,
+  tread: 0.28,
+  wall: 0.2,           // retaining walls
+  curb: 0.15,          // retaining wall top above grade
+  gapToPorch: 0.5,     // clearance between porch stair and pit
+  doorWidth: 1.0,
+  doorHeight: 2.1,
+  canopyHigh: 2.55,    // canopy height at the wall (above grade)
+  canopyLow: 2.15,     // at the outer edge
+  canopyOverhang: 0.3,
+  ribSpacing: 0.2,
+  canopyColor: '#4d6b86',
+  ribColor: '#1c252d',
+};
+
+/** Route arrows painted on the ground in front of the building. */
+export const ARROWS = {
+  width: 0.3,
+  headLength: 0.8,
+  headWidth: 0.8,
+  offset: 4.0,          // distance of the route from the facade
+  color: '#d9342b',
+};
+
 /** Floor slabs. */
 export const SLAB = {
   thickness: 0.25,

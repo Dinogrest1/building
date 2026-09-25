@@ -85,7 +85,7 @@ export class Viewer {
 
   createGround() {
     const ground = new THREE.Mesh(
-      new THREE.CircleGeometry(300, 64),
+      this.groundGeometry([]),
       new THREE.MeshStandardMaterial({ color: 0xeeedea, roughness: 1 }),
     );
     ground.rotation.x = -Math.PI / 2;
@@ -93,6 +93,24 @@ export class Viewer {
     ground.name = 'ground';
     this.scene.add(ground);
     this.ground = ground;
+  }
+
+  /** Round ground plate with rectangular cut-outs given in world XZ (e.g. basement stair pits). */
+  groundGeometry(cutouts) {
+    const shape = new THREE.Shape();
+    shape.absarc(0, 0, 300, 0, Math.PI * 2, false);
+    for (const c of cutouts) {
+      // shape y = −world z (the plate is rotated −90° about X)
+      const h = new THREE.Path();
+      h.moveTo(c.x0, -c.z1); h.lineTo(c.x0, -c.z0); h.lineTo(c.x1, -c.z0); h.lineTo(c.x1, -c.z1); h.closePath();
+      shape.holes.push(h);
+    }
+    return new THREE.ShapeGeometry(shape, 64);
+  }
+
+  setGroundCutouts(cutouts) {
+    this.ground.geometry.dispose();
+    this.ground.geometry = this.groundGeometry(cutouts || []);
   }
 
   setupComposer() {

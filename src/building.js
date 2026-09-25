@@ -6,14 +6,22 @@ import { createRoof } from './roof.js';
 import { createFloorSlabs, createPlanFloor } from './interior.js';
 import { createStairs, stairWell } from './stairs.js';
 import { PLAN_STAIRS, planToWorld } from './plan4.js';
+import { basementCutout } from './basement.js';
 import { InstanceSink, Placer, createRng, disposeObject } from './utils.js';
 
 /** Toggleable element categories (each becomes a child group). */
 export const LAYERS = [
   'structure', 'windows', 'fins', 'hvac', 'entrance', 'service', 'roof',
   'slabs', 'interior', 'stairWalls', 'stairs', 'labels',
-  'porch', 'canopies', 'annex', // additions in front of the main facade
+  'porch', 'canopies', 'annex', 'basement', 'arrows', // additions in front of the main facade
 ];
+
+/**
+ * Additions in front of the facade live in their own scope, so hiding a facade
+ * wall does not hide them – they have their own toggles.
+ */
+const ADDITIONS = new Set(['porch', 'canopies', 'annex', 'basement', 'arrows']);
+const scopeOf = (category, scope) => (ADDITIONS.has(category) ? 'additions' : scope);
 
 /** Scopes: each facade and each storey can be hidden on its own. */
 export const FACADES = ['front', 'back', 'left', 'right'];
@@ -43,11 +51,11 @@ export class Building extends THREE.Group {
     }
     const store = {
       sink: (category, scope) => {
-        const k = `${category}|${scope}`;
+        const k = `${category}|${scopeOf(category, scope)}`;
         if (!this.sinks.has(k)) this.sinks.set(k, new InstanceSink());
         return this.sinks.get(k);
       },
-      group: (category, scope) => this.scopeGroup(category, scope),
+      group: (category, scope) => this.scopeGroup(category, scopeOf(category, scope)),
     };
     this.placer = new Placer(store);
     this.rng = createRng(params.seed);
@@ -93,6 +101,9 @@ export class Building extends THREE.Group {
   createFacades() {
     const ctx = { params: this.params, levels: this.layout.levels, materials: this.materials, rng: this.rng };
     for (const def of this.layout.facades) buildFacade(this.placer, def, ctx);
+    // openings in the ground plane (basement stair pits)
+    this.groundCutouts = this.layout.facades.flatMap((def) =>
+      def.features.filter((f) => f.type === 'basement').map((f) => basementCutout(f, def.frame)));
   }
 
   /** Stair cores (aligned with the facade strips), floor slabs, stairs and the traced plan. */

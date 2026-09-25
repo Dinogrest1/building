@@ -12,6 +12,7 @@ const sectionPlane = new THREE.Plane(new THREE.Vector3(0, 0, -1), 0); // keeps z
 
 let building = new Building(params, materials);
 viewer.scene.add(building);
+viewer.setGroundCutouts(building.groundCutouts);
 
 const app = {
   viewer,
@@ -22,6 +23,7 @@ const app = {
     building.dispose();
     building = new Building(params, materials);
     viewer.scene.add(building);
+    viewer.setGroundCutouts(building.groundCutouts);
   },
   setWireframe: (v) => setWireframe(materials, v),
   applyColors: () => applyColors(materials, params.colors),

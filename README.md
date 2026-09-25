@@ -23,8 +23,8 @@ npm run build    # production build in dist/
 * lil-gui panel:
   * **Display**: toggle roof, HVAC, fins, windows, shadows, ambient occlusion (GTAO) and wireframe; set sun intensity; reset the camera
   * **Parameters (rebuild)**: width, depth, floors, floor height, parapet height, number of window modules, pane width, window height, sill height, HVAC density, random seed
-  * **Walls & interior**: per-facade walls, 4th-floor walls & doors, stair-core walls, slabs, room names, doors < 900 mm, stairs (highlight colour, transparent flights)
-  * **Front additions**: entrance porch & steps, canopies, technical annex, entrance/utility doors, roller shutters & grilles
+  * **Walls & interior**: per-facade walls, front wall of the stair shafts (hides only the strips with the small windows), 4th-floor walls & doors, stair-core walls, slabs, room names, doors < 900 mm, stairs (highlight colour, transparent flights)
+  * **Front additions** (independent of the facade toggles): entrance porch & steps, canopies, technical annex, basement stair under a lean-to canopy, route arrows on the ground, entrance/utility doors, roller shutters & grilles
   * **Section (stair shafts)**: vertical section cut that removes everything in front of it except the stairs, so both shafts read through all floors; adjustable cut depth. Also the **Stair shafts** button in the bottom bar
   * **Colours**: facade, side, plinth, fins, glass, frames, roof, HVAC and metal (applied live)
 
