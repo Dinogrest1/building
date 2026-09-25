@@ -25,10 +25,20 @@ export function createFloorSlabs(placer, p, lv, wells, mats) {
       scoped.boxMinMax('slabs', mats.slab, -hw, 0, -hd, hw, lv.floor(0), hd);
       continue;
     }
-    // shape in (x, -z) so that rotateX(-90°) lays it flat with +Y up
+    // Shape in (x, −z) so that rotateX(−90°) lays it flat with +Y up.
+    // Stair wells reach the facade wall, so they are notches in the outline
+    // (a hole touching the outline would not be triangulated).
     const shape = new THREE.Shape();
-    shape.moveTo(-hw, -hd); shape.lineTo(hw, -hd); shape.lineTo(hw, hd); shape.lineTo(-hw, hd); shape.closePath();
-    for (const w of wells) {
+    const notches = wells.filter((w) => w.z1 >= hd - 0.02).sort((a, b) => a.x0 - b.x0);
+    shape.moveTo(-hw, -hd);
+    for (const w of notches) {
+      shape.lineTo(w.x0, -hd);
+      shape.lineTo(w.x0, -w.z0);
+      shape.lineTo(w.x1, -w.z0);
+      shape.lineTo(w.x1, -hd);
+    }
+    shape.lineTo(hw, -hd); shape.lineTo(hw, hd); shape.lineTo(-hw, hd); shape.closePath();
+    for (const w of wells.filter((x) => !notches.includes(x))) {
       const hole = new THREE.Path();
       hole.moveTo(w.x0, -w.z1); hole.lineTo(w.x1, -w.z1); hole.lineTo(w.x1, -w.z0); hole.lineTo(w.x0, -w.z0); hole.closePath();
       shape.holes.push(hole);
