@@ -14,7 +14,7 @@ const LAYER_TOGGLES = {
 const FACADE_KEYS = { front: 'wallFront', back: 'wallBack', left: 'wallLeft', right: 'wallRight' };
 
 /**
- * lil-gui panel + HTML camera preset buttons.
+ * lil-gui panel: views (camera presets), display, walls & interior, rooms, parameters, colours.
  * `app` exposes: viewer, building(), params, rebuild(), setWireframe(), applyColors(),
  * setStairStyle(), setNarrowDoors().
  */
@@ -51,6 +51,8 @@ export function createUI(app) {
   };
 
   gui.add(view, 'resetAll').name('↺ Reset all to defaults');
+  // views (camera presets, cutaways, walk) – filled in below, kept at the top of the panel
+  const fViews = gui.addFolder('Views');
 
   // ---------------- Camera / navigation ----------------
   const nav = viewer.nav;
@@ -69,16 +71,10 @@ export function createUI(app) {
   });
   fCam.add(view, 'resetCamera').name('Reset camera');
 
-  const HINTS = {
-    orbit: 'Drag: rotate · Right drag: pan · Wheel: zoom · WASD/arrows: move · Q/E: down/up · Shift: faster · Double-click: new pivot',
-    walk: 'Walk mode · Drag: look around · WASD/arrows: walk · Q/E: down/up · Wheel: step · Shift: faster · Esc: exit',
-  };
-  const hint = document.querySelector('#hud .hint');
   const syncNav = (mode) => {
-    if (hint) hint.textContent = HINTS[mode];
-    walkCtrl.name(mode === 'walk' ? '◂ Exit walk mode' : '▸ Walk mode (first person)');
-    walkBtn?.classList.toggle('active', mode === 'walk');
-    if (walkBtn) walkBtn.textContent = mode === 'walk' ? 'Exit walk' : 'Walk';
+    const label = mode === 'walk' ? '◂ Exit walk mode (Esc)' : '▸ Walk mode (first person)';
+    walkCtrl.name(label);
+    walkViewCtrl?.name(label);
     if (mode === 'walk') setActive(null);
   };
   nav.onChange(syncNav);
@@ -331,29 +327,23 @@ export function createUI(app) {
     setActive('Section');
   }
 
-  // HTML preset buttons (bottom of the screen)
-  const bar = document.getElementById('presets');
-  const buttons = {};
+  // ---------------- Views: camera presets, cutaways, walk ----------------
+  const viewButtons = {};
   const setActive = (name) => {
-    for (const [n, b] of Object.entries(buttons)) b.classList.toggle('active', n === name);
+    for (const [n, { ctrl, label }] of Object.entries(viewButtons)) ctrl.name(n === name ? `● ${label}` : label);
   };
-  const addButton = (label, onClick, title) => {
-    const b = document.createElement('button');
-    b.textContent = label;
-    if (title) b.title = title;
-    b.addEventListener('click', onClick);
-    bar.appendChild(b);
-    return b;
+  const addView = (key, label, fn) => {
+    const ctrl = fViews.add({ go: fn }, 'go').name(label);
+    viewButtons[key] = { ctrl, label };
   };
   for (const name of Object.keys(CAMERA_PRESETS)) {
     if (name === 'Interior' || name === 'Section') continue;
-    buttons[name] = addButton(name, () => { viewer.applyPreset(name); setActive(name); });
+    addView(name, name, () => { viewer.applyPreset(name); setActive(name); });
   }
-  buttons.Interior = addButton('4th floor', showFloor4, 'Hide roof and front facade, look into the 4th floor');
-  buttons.Section = addButton('Stair shafts', showStairShafts, 'Section cut through both stair shafts');
-  const walkBtn = addButton('Walk', toggleWalk, 'First-person walk: drag to look, WASD to move');
-  addButton('Reset camera', view.resetCamera);
-  addButton('Reset all', resetAll, 'Restore all parameters, colours, display options and the camera');
+  addView('Interior', '4th floor (roof & front off)', showFloor4);
+  addView('Section', 'Stair shafts (section)', showStairShafts);
+  const walkViewCtrl = fViews.add({ go: () => toggleWalk() }, 'go').name('▸ Walk mode (first person)');
+  fViews.add(view, 'resetCamera').name('Reset camera');
   setActive(DEFAULT_PRESET);
   viewer.controls.addEventListener('start', () => setActive(null));
 

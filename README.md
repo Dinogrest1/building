@@ -16,16 +16,16 @@ npm run build    # production build in dist/
 * Left mouse: rotate · wheel: zoom · right mouse: pan (damped; distance and target are clamped)
 * W/A/S/D or arrows: move the camera together with its pivot · Q/E: down/up · Shift: faster
 * Double-click a surface: make it the new rotation pivot · single click on a 4th-floor room: select it in the Rooms panel
-* **Walk** (bottom bar or *Camera* folder): first-person mode, drag to look around, WASD to walk, Q/E down/up, wheel steps forward, Esc exits. It starts exactly from the current camera position; the *Camera* folder has move speed and lens (field of view) sliders.
-* Bottom bar: camera presets (Front Right, Front, Front Left, Top Isometric, Right Side, Roof) with animated transitions, plus Reset camera
-* **Reset all** (bottom bar and top of the panel) restores every parameter, colour, display option and the camera to the defaults in `src/config.js`
+* **Walk** (*Views* or *Camera* folder): first-person mode, drag to look around, WASD to walk, Q/E down/up, wheel steps forward, Esc exits. It starts exactly from the current camera position; the *Camera* folder has move speed and lens (field of view) sliders.
+* Panel → **Views**: camera presets (Front Right, Front, Front Left, Top Isometric, Right Side, Roof), 4th floor cutaway, stair-shaft section, walk mode and Reset camera (● marks the active view)
+* **Reset all** (top of the panel) restores every parameter, colour, display option and the camera to the defaults in `src/config.js`
 * Each panel section also has its own reset: **Default display**, **Default parameters** (one rebuild with the default geometry) and **Default colours**
 * lil-gui panel:
   * **Display**: toggle roof, HVAC, fins, windows, shadows, ambient occlusion (GTAO) and wireframe; set sun intensity; reset the camera
   * **Parameters (rebuild)**: width, depth, floors, floor height, parapet height, number of window modules, pane width, window height, sill height, HVAC density, random seed
   * **Walls & interior**: per-facade walls, front wall of the stair shafts (hides only the strips with the small windows), 4th-floor exterior walls & windows (the facade band of that storey on all sides, with its windows, fins and AC units), 4th-floor walls & doors, stair-core walls, slabs, room names, doors < 900 mm, stairs (highlight colour, transparent flights)
   * **Front additions** (independent of the facade toggles): entrance porch & steps, canopies, technical annex (with an editable 4-digit sign), basement stair under a lean-to canopy, route arrows on the ground, entrance/utility doors, roller shutters & grilles
-  * **Section (stair shafts)**: vertical section cut that removes everything in front of it except the stairs, so both shafts read through all floors; adjustable cut depth. Also the **Stair shafts** button in the bottom bar
+  * **Section (stair shafts)**: vertical section cut that removes everything in front of it except the stairs, so both shafts read through all floors; adjustable cut depth. Also *Stair shafts* in **Views**
   * **Rooms (4th floor)**: click a room on the 4th floor to select it (orange outline) and edit it here; hide all walls and doors while keeping the plan markup on the floor; per room (drop-down): colour the floor, show/hide the name, arrow from the room's doorway to the nearest stairs (with the stair and route length); *Only this room*, arrows from every room, show/hide all names, clear colours. Routes follow corridors and doorways with straight segments and 90° turns (grid path-finding with a turn penalty on the traced plan, `src/routes.js`)
   * **Colours**: facade, side, plinth, fins, glass, frames, roof, HVAC and metal (applied live)
 
