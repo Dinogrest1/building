@@ -193,7 +193,7 @@ function createRooms(placer, y0, W, D, mats) {
     if (r?.path) {
       const pts = r.path.map(([px, py]) => planToWorldRaw(px, py, W, D));
       length = pts.slice(1).reduce((sum, q, k) => sum + Math.hypot(q[0] - pts[k][0], q[1] - pts[k][1]), 0);
-      createFloorArrow(placer.withScope(`route-${i}`), 'routes', pts, y0 + 0.03, mats.route,
+      createFloorArrow(placer.withScope(`route-${i}`), 'routes', pts, y0 + 0.03, mats,
         { width: 0.22, headLength: 0.6, headWidth: 0.6 });
     }
     return {

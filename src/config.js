@@ -142,6 +142,8 @@ export const SERVICE = {
   enclosure: { width: 3.4, height: 1.9, depth: 1.3 },
   // sign block on top of the technical annex with editable digits
   sign: { width: 1.7, height: 0.6, depth: 0.14, text: '0000', maxDigits: 4 },
+  // the code repeated on the ground in front of the annex
+  groundCode: { prefix: 'КОД:', width: 3.0, height: 0.75, offset: 1.4, color: '#1f2226' },
 };
 
 /** Basement entrance next to the main porch: stair pit along the facade under a lean-to canopy. */

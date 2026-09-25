@@ -57,6 +57,7 @@ export class Viewer {
     controls.addEventListener('start', () => { this.anim = null; });
 
     this.nav = new Navigation(this);
+    this.frameCallbacks = new Set();
 
     this.setupComposer();
     this.applyPreset(DEFAULT_PRESET, false);
@@ -198,6 +199,49 @@ export class Viewer {
     if (a.t >= 1) this.anim = null;
   }
 
+  /**
+   * High-quality still of the current view: renders `scale`× the window size
+   * (clamped to what the GPU supports) with a doubled shadow map and dense
+   * ambient-occlusion sampling, then restores the interactive settings.
+   * Resolves a PNG Blob and the pixel size.
+   */
+  async snapshot(scale = 2) {
+    const r = this.renderer;
+    const gl = r.getContext();
+    const maxSize = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE), gl.getParameter(gl.MAX_RENDERBUFFER_SIZE), 8192);
+    const w = window.innerWidth;
+    const h = window.innerHeight;
+    const k = Math.min(scale * Math.min(window.devicePixelRatio, 2), maxSize / w, maxSize / h);
+    const W = Math.floor(w * k);
+    const H = Math.floor(h * k);
+
+    const saved = { ratio: r.getPixelRatio(), shadow: this.sun.shadow.mapSize.x };
+    const setShadow = (size) => {
+      this.sun.shadow.mapSize.set(size, size);
+      this.sun.shadow.map?.dispose();
+      this.sun.shadow.map = null;
+    };
+    try {
+      setShadow(Math.min(8192, gl.getParameter(gl.MAX_TEXTURE_SIZE)));
+      if (this.aoPass) this.aoPass.updateGtaoMaterial({ samples: 32 });
+      r.setPixelRatio(1);
+      r.setSize(W, H, false);
+      this.composer.setPixelRatio(1);
+      this.composer.setSize(W, H);
+      this.controls.update();
+      this.composer.render();
+      this.composer.render(); // second pass once the enlarged shadow map is warm
+      const blob = await new Promise((res) => r.domElement.toBlob(res, 'image/png'));
+      return { blob, width: W, height: H };
+    } finally {
+      setShadow(saved.shadow);
+      if (this.aoPass) this.aoPass.updateGtaoMaterial({ samples: 16 });
+      r.setPixelRatio(saved.ratio);
+      this.composer.setPixelRatio(saved.ratio);
+      this.onResize();
+    }
+  }
+
   onResize() {
     const w = window.innerWidth;
     const h = window.innerHeight;
@@ -216,6 +260,7 @@ export class Viewer {
       const dt = Math.min(timer.getDelta(), 0.1);
       this.updateAnimation(dt);
       this.nav.update(dt);
+      for (const fn of this.frameCallbacks) fn(dt);
       if (this.nav.mode === 'orbit') this.controls.update();
       this.composer.render();
       requestAnimationFrame(loop);

@@ -87,5 +87,5 @@ export function basementCutout(f, frame) {
 
 /** Painted route arrow on the ground in front of the facade. */
 export function createRouteArrow(placer, points, mats) {
-  createFloorArrow(placer, 'arrows', points, 0.01, mats.arrow);
+  createFloorArrow(placer, 'arrows', points, 0.012, mats);
 }

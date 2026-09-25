@@ -71,6 +71,41 @@ export function createEnclosure(placer, u, mats) {
   face.position.set(u, top + S.height / 2, zf + 0.003);
   face.name = 'annex-sign';
   placer.mesh('annex', face);
+
+  // the same code painted on the ground in front of the annex: "КОД: 0000"
+  const G = SERVICE.groundCode;
+  const ground = new THREE.Mesh(new THREE.PlaneGeometry(G.width, G.height), groundCodeMaterial(S.text));
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.set(u, 0.014, E.depth + G.offset);
+  ground.renderOrder = 3;
+  ground.name = 'annex-ground-code';
+  placer.mesh('annexCode', ground);
+}
+
+/** Transparent canvas texture with painted "КОД: digits" for the ground. */
+function groundCodeTexture(text) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = SERVICE.groundCode.color;
+  ctx.font = '800 150px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`${SERVICE.groundCode.prefix} ${text || ''}`.trim(), canvas.width / 2, canvas.height / 2 + 8);
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+function groundCodeMaterial(text) {
+  const mat = new THREE.MeshBasicMaterial({
+    map: groundCodeTexture(text), transparent: true, depthWrite: false, toneMapped: false,
+    polygonOffset: true, polygonOffsetFactor: -3,
+  });
+  mat.userData.disposable = true;
+  return mat;
 }
 
 /** Canvas texture with the sign digits. */
@@ -106,12 +141,13 @@ export function sanitizeSignText(value) {
   return String(value ?? '').replace(/\D/g, '').slice(0, SERVICE.sign.maxDigits);
 }
 
-/** Updates the digits on every annex sign under `root`. */
+/** Updates the digits on the annex sign and the painted ground code under `root`. */
 export function setAnnexSignText(root, text) {
   root.traverse((o) => {
-    if (o.name !== 'annex-sign') return;
+    const make = o.name === 'annex-sign' ? signTexture : o.name === 'annex-ground-code' ? groundCodeTexture : null;
+    if (!make) return;
     o.material.map?.dispose();
-    o.material.map = signTexture(text);
+    o.material.map = make(text);
     o.material.needsUpdate = true;
   });
 }

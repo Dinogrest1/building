@@ -2,6 +2,47 @@ import * as THREE from 'three';
 import { BASEMENT, ARROWS } from './config.js';
 
 export const STAIR_COLOR = '#c9c5bd';
+
+/** Repeating "dash + arrowhead" pattern along the U axis (white, tinted by the material colour). */
+function createFlowTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 64;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(14, 24, 96, 16);                     // dash "-"
+  ctx.beginPath();                                  // arrow "→"
+  ctx.moveTo(126, 22); ctx.lineTo(186, 22); ctx.lineTo(186, 6); ctx.lineTo(244, 32);
+  ctx.lineTo(186, 58); ctx.lineTo(186, 42); ctx.lineTo(126, 42); ctx.closePath();
+  ctx.fill();
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.wrapT = THREE.ClampToEdgeWrapping;
+  tex.anisotropy = 8;
+  return tex;
+}
+const FLOW_TEXTURE = createFlowTexture();
+const SOLID_TEXTURE = (() => {
+  const t = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1);
+  t.needsUpdate = true;
+  return t;
+})();
+
+/** Route arrow look: 'flow' (animated -→-→) or 'solid'; colour; pattern spacing in metres. */
+export function setFlowStyle(materials, { style, color, spacing }) {
+  const m = materials.flow;
+  const map = style === 'solid' ? SOLID_TEXTURE : FLOW_TEXTURE;
+  if (m.map !== map) { m.map = map; m.needsUpdate = true; }
+  FLOW_TEXTURE.repeat.set(1 / Math.max(0.1, spacing), 1);
+  m.color.set(color);
+  materials.flowHead.color.set(color);
+}
+
+/** Advances the flow animation (called every frame). */
+export function updateFlow(dt, speed, spacing) {
+  // the pattern moves toward the arrow head: speed in m/s → texture offset in pattern units
+  FLOW_TEXTURE.offset.x = (FLOW_TEXTURE.offset.x - (speed * dt) / Math.max(0.1, spacing)) % 1;
+}
 export const DOOR_FRAME_COLOR = '#6d7175';
 
 /** Subtle procedural plaster noise so large walls don't look like flat CG. */
@@ -122,11 +163,17 @@ export function createMaterials(colors) {
     stairNosing: new THREE.MeshStandardMaterial({ color: '#8b8e91', roughness: 0.5, metalness: 0.5 }),
     steel: new THREE.MeshStandardMaterial({ color: '#d3d8dc', roughness: 0.22, metalness: 0.9 }),
     markup: new THREE.MeshStandardMaterial({ color: '#45484c', roughness: 0.8 }),
-    route: new THREE.MeshStandardMaterial({ color: ARROWS.color, roughness: 0.6, emissive: '#3a0703', side: THREE.DoubleSide }),
+    // route arrows: animated "-→-→" ribbon + solid head (colour/spacing/speed from the GUI)
+    flow: new THREE.MeshBasicMaterial({
+      color: ARROWS.color, map: FLOW_TEXTURE, transparent: true, alphaTest: 0.35, depthWrite: false,
+      side: THREE.DoubleSide, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -3,
+    }),
+    flowHead: new THREE.MeshBasicMaterial({
+      color: ARROWS.color, side: THREE.DoubleSide, toneMapped: false, polygonOffset: true, polygonOffsetFactor: -3,
+    }),
     // front additions
     canopySheet: new THREE.MeshStandardMaterial({ color: BASEMENT.canopyColor, roughness: 0.45, metalness: 0.5, side: THREE.DoubleSide }),
     canopyRib: new THREE.MeshStandardMaterial({ color: BASEMENT.ribColor, roughness: 0.5, metalness: 0.5 }),
-    arrow: new THREE.MeshStandardMaterial({ color: ARROWS.color, roughness: 0.6, emissive: '#3a0703', side: THREE.DoubleSide }),
     railGlass: new THREE.MeshPhysicalMaterial({
       color: '#a8d6d4', roughness: 0.05, metalness: 0, transparent: true, opacity: 0.35, depthWrite: false,
     }),

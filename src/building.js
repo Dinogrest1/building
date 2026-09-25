@@ -13,7 +13,7 @@ import { InstanceSink, Placer, createRng, disposeObject } from './utils.js';
 export const LAYERS = [
   'structure', 'windows', 'fins', 'hvac', 'entrance', 'service', 'roof',
   'slabs', 'interior', 'stairWalls', 'stairs', 'labels',
-  'porch', 'canopies', 'annex', 'basement', 'arrows', // additions in front of the main facade
+  'porch', 'canopies', 'annex', 'annexCode', 'basement', 'arrows', // additions in front of the main facade
   'markup', 'roomFills', 'routes',                      // 4th-floor plan tools
 ];
 
@@ -21,7 +21,7 @@ export const LAYERS = [
  * Additions in front of the facade live in their own scope, so hiding a facade
  * wall does not hide them – they have their own toggles.
  */
-const ADDITIONS = new Set(['porch', 'canopies', 'annex', 'basement', 'arrows']);
+const ADDITIONS = new Set(['porch', 'canopies', 'annex', 'annexCode', 'basement', 'arrows']);
 const scopeOf = (category, scope) => (ADDITIONS.has(category) ? 'additions' : scope);
 
 /** Scopes: each facade and each storey can be hidden on its own. */

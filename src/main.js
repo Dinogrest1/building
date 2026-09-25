@@ -1,7 +1,7 @@
 import { Viewer } from './scene.js';
 import { Building } from './building.js';
 import * as THREE from 'three';
-import { createMaterials, applyColors, setWireframe, setStairStyle, setNarrowDoorHighlight, setSectionCut } from './materials.js';
+import { createMaterials, applyColors, setWireframe, setStairStyle, setNarrowDoorHighlight, setSectionCut, setFlowStyle } from './materials.js';
 import { DEFAULT_PARAMS } from './config.js';
 import { createUI } from './ui.js';
 
@@ -29,6 +29,7 @@ const app = {
   applyColors: () => applyColors(materials, params.colors),
   setStairStyle: (style) => setStairStyle(materials, style),
   setNarrowDoors: (v) => setNarrowDoorHighlight(materials, v),
+  setFlowStyle: (style) => setFlowStyle(materials, style),
   /** depth = metres behind the main facade where the building is cut; null removes the cut. */
   setSection(depth) {
     if (depth == null) { setSectionCut(materials, null); return; }

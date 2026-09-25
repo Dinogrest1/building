@@ -1,15 +1,16 @@
 import GUI from 'lil-gui';
-import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET, SERVICE } from './config.js';
+import { CAMERA_PRESETS, DEFAULT_PARAMS, DEFAULT_PRESET, SERVICE, ARROWS } from './config.js';
 import { FACADES } from './building.js';
 import { NAV } from './navigation.js';
 import { sanitizeSignText, setAnnexSignText } from './serviceArea.js';
+import { updateFlow } from './materials.js';
 
 /** Display toggles that map directly onto building layers. */
 const LAYER_TOGGLES = {
   roof: 'roof', hvac: 'hvac', fins: 'fins', windows: 'windows',
   slabs: 'slabs', interiorWalls: 'interior', stairWalls: 'stairWalls', stairs: 'stairs', labels: 'labels',
   porch: 'porch', canopies: 'canopies', annex: 'annex', entranceDoors: 'entrance', service: 'service',
-  basement: 'basement', arrows: 'arrows', markup: 'markup',
+  basement: 'basement', arrows: 'arrows', markup: 'markup', annexCode: 'annexCode',
 };
 const FACADE_KEYS = { front: 'wallFront', back: 'wallBack', left: 'wallLeft', right: 'wallRight' };
 
@@ -36,6 +37,9 @@ export function createUI(app) {
     porch: true, canopies: true, annex: true, entranceDoors: true, service: true,
     basement: true, arrows: true,
     annexText: SERVICE.sign.text, // digits on the technical annex sign
+    annexCode: true,              // the same code painted on the ground: "КОД: …"
+    // route arrows (rooms → stairs and in front of the building)
+    flowStyle: 'flow', flowAnimate: true, flowSpeed: 1.0, flowSpacing: 0.7, flowColor: ARROWS.color,
     stairFront: true, // facade strips in front of the stair shafts
     markup: true,     // plan lines on the 4th floor
     floor4Facade: true, // exterior walls with windows of the 4th floor
@@ -106,6 +110,7 @@ export function createUI(app) {
     app.setNarrowDoors(view.narrowDoors);
     app.setSection(view.section ? view.sectionDepth : null);
     setAnnexSignText(app.building(), view.annexText);
+    app.setFlowStyle({ style: view.flowStyle, color: view.flowColor, spacing: view.flowSpacing });
     applyRooms();
     viewer.setAO(view.ambientOcclusion && !view.section); // AO pass ignores clipping
   }
@@ -150,6 +155,7 @@ export function createUI(app) {
     if (clean !== v) { view.annexText = clean; signCtrl.updateDisplay(); }
     setAnnexSignText(app.building(), clean);
   });
+  fFront.add(view, 'annexCode').name('code on the ground ("КОД: …")').onChange(applyView);
   const signInput = signCtrl.domElement.querySelector('input');
   signInput.maxLength = SERVICE.sign.maxDigits;
   signInput.inputMode = 'numeric';
@@ -235,8 +241,19 @@ export function createUI(app) {
     fRooms.domElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   });
 
+  // ---------------- Arrows: animated "-→-→" routes ----------------
+  const fArrows = gui.addFolder('Arrows');
+  fArrows.add(view, 'flowStyle', { 'dashes and arrows  -→-→': 'flow', 'solid line': 'solid' }).name('style').onChange(applyView);
+  fArrows.add(view, 'flowAnimate').name('animate').onChange(applyView);
+  fArrows.add(view, 'flowSpeed', 0, 5, 0.05).name('speed, m/s');
+  fArrows.add(view, 'flowSpacing', 0.3, 2, 0.05).name('spacing, m').onChange(applyView);
+  fArrows.addColor(view, 'flowColor').name('colour').onChange(applyView);
+  viewer.frameCallbacks.add((dt) => {
+    if (view.flowAnimate && view.flowStyle === 'flow') updateFlow(dt, view.flowSpeed, view.flowSpacing);
+  });
+
   // keep the panel short: less used sections start collapsed
-  for (const f of [fCam, fView, fFront, fSection, fStairs]) f.close();
+  for (const f of [fCam, fView, fFront, fSection, fStairs, fArrows]) f.close();
 
   gui.add({ reset: () => resetDisplay() }, 'reset').name('↺ Default display, walls & interior');
 
@@ -344,10 +361,70 @@ export function createUI(app) {
   addView('Section', 'Stair shafts (section)', showStairShafts);
   const walkViewCtrl = fViews.add({ go: () => toggleWalk() }, 'go').name('▸ Walk mode (first person)');
   fViews.add(view, 'resetCamera').name('Reset camera');
+
+  // high-quality still of the current view
+  const shot = { quality: 2, save: () => saveSnapshot() };
+  fViews.add(shot, 'quality', { 'screen ×1': 1, 'high ×2': 2, 'very high ×3': 3, 'maximum ×4': 4 }).name('snapshot quality');
+  const shotCtrl = fViews.add(shot, 'save').name('📷 Save snapshot (PNG)');
+  async function saveSnapshot() {
+    shotCtrl.name('Rendering…').disable();
+    try {
+      const { blob, width, height } = await viewer.snapshot(shot.quality);
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      const filename = `building-${stamp}-${width}x${height}.png`;
+      await deliverFile(blob, filename);
+    } catch (err) {
+      console.warn('Snapshot failed', err);
+    } finally {
+      shotCtrl.name('📷 Save snapshot (PNG)').enable();
+    }
+  }
   setActive(DEFAULT_PRESET);
   viewer.controls.addEventListener('start', () => setActive(null));
 
   syncNav(nav.mode);
   applyView();
   return gui;
+}
+
+/**
+ * Hands a generated file to the viewer. Inside claude.ai the page uses the
+ * `downloads` capability (the viewer confirms the save); running locally it is
+ * an ordinary browser download. If neither is possible the image opens in an
+ * overlay so it can be saved with right-click → "Save image as".
+ */
+async function deliverFile(blob, filename) {
+  const host = window.claude?.use ? await window.claude.use('downloads') : undefined;
+  if (host) {
+    try {
+      await host.save({ filename, data: blob });
+    } catch (err) {
+      if (err?.code !== 'declined' && err?.code !== 'rate_limited') showImageOverlay(blob);
+    }
+    return;
+  }
+  if (host === null) { showImageOverlay(blob); return; } // framed, but saving is not available here
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+
+function showImageOverlay(blob) {
+  const url = URL.createObjectURL(blob);
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'position:fixed;inset:0;z-index:10000;background:rgba(20,21,23,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;font:13px system-ui,sans-serif;color:#eee';
+  const img = document.createElement('img');
+  img.src = url;
+  img.alt = 'Snapshot';
+  img.style.cssText = 'max-width:100%;max-height:80vh;box-shadow:0 8px 32px rgba(0,0,0,.5)';
+  const note = document.createElement('div');
+  note.textContent = 'Right-click the image → "Save image as…" · click outside to close';
+  wrap.append(img, note);
+  wrap.addEventListener('click', (e) => { if (e.target === wrap) { wrap.remove(); URL.revokeObjectURL(url); } });
+  document.body.appendChild(wrap);
 }
